@@ -1,5 +1,5 @@
 {
-  "name": "my-turborepo",
+  "name": "rh-system",
   "private": true,
   "scripts": {
     "build": "turbo run build",
