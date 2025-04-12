@@ -1,10 +1,11 @@
 services:
   postgres:
     image: bitnami/postgresql
+    container_name: rh-postgres-db
     environment:
-      POSTGRESQL_USERNAME: rh-system
-      POSTGRESQL_PASSWORD: ry@1232025Ac
-      POSTGRESQL_DATABASE: rh-system
+      POSTGRESQL_USERNAME: ${DB_USER:-rh-system}
+      POSTGRESQL_PASSWORD: ${DB_PASS:-ry@1232025Ac}
+      POSTGRESQL_DATABASE: ${DB_NAME:-rh-system}
       POSTGRESQL_PORT_NUMBER: 5435
     ports:
       - "5435:5435"
