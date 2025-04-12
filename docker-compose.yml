@@ -1,0 +1,10 @@
+services:
+  postgres:
+    image: bitnami/postgresql
+    environment:
+      POSTGRESQL_USERNAME: rh-system
+      POSTGRESQL_PASSWORD: ry@1232025Ac
+      POSTGRESQL_DATABASE: rh-system
+      POSTGRESQL_PORT_NUMBER: 5435
+    ports:
+      - "5435:5435"
