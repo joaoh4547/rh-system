@@ -1,0 +1,4 @@
+{
+	"extends": "@rh-system/tsconfig/library.json",
+	"include": ["index.ts"]
+}

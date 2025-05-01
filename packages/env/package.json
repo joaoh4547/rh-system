@@ -1,0 +1,15 @@
+{
+	"name": "@rh-system/env",
+	"author": "João",
+	"version": "1.0.0",
+	"main": "index.ts",
+	"license": "ISC",
+	"dependencies": {
+		"@t3-oss/env-nextjs": "^0.13.0",
+		"zod": "^3.24.3"
+	},
+	"devDependencies": {
+		"@rh-system/tsconfig": "workspace:*",
+		"@types/node": "^22.15.3"
+	}
+}

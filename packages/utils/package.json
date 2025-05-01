@@ -1,0 +1,13 @@
+{
+	"name": "@rh-system/utils",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"files": ["test/random-cpf.ts", "slugfy.ts"],
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"devDependencies": {
+		"@types/node": "^22.14.1"
+	}
+}
