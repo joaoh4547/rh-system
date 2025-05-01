@@ -1,10 +1,12 @@
 import * as console from "node:console";
-import {CreateRoleUseCase} from "@/domain/use-cases/role/create-role-use-case";
-import {PrismaRoleRepository} from "@/infra/database/prisma/repositories/prisma-role-repository";
-import {createRoleSchema} from "@/schema/role";
-import type {FastifyInstance} from "fastify";
-import type {ZodTypeProvider} from "fastify-type-provider-zod";
-import {z} from "zod";
+
+import { CreateRoleUseCase } from "@/domain/use-cases/role/create-role-use-case";
+import { PrismaRoleRepository } from "@/infra/database/prisma/repositories/prisma-role-repository";
+import { createRoleSchema } from "@/schema/role";
+import type { FastifyInstance } from "fastify";
+import type { ZodTypeProvider } from "fastify-type-provider-zod";
+import { z } from "zod";
+
 
 export async function createRole(app: FastifyInstance) {
 	app.withTypeProvider<ZodTypeProvider>().post(

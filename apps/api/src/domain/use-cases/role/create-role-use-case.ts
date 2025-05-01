@@ -1,7 +1,8 @@
-import type {RoleRepository} from "@/domain/repositories/role-repository";
-import type {Role} from "@/schema/role";
 
-import {slugify} from "@rh-system/utils/slugfy";
+import type { RoleRepository } from "@/domain/repositories/role-repository";
+import type { Role } from "@/schema/role";
+
+import { slugify } from "@rh-system/utils/slugfy";
 
 interface CreateRoleUseInputParams {
 	name: string;
@@ -29,6 +30,7 @@ export class CreateRoleUseCase {
 		await this.roleRepository.create(role);
 		return {
 			role,
-		};
+		}
+
 	}
 }

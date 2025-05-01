@@ -43,6 +43,7 @@ app.register(fastifySwaggerUi, {
 // Role Routes
 app.register(createRole);
 
+
 app.listen({ port: env.SERVER_PORT }).then(() => {
 	console.log(`HTTP Running on http:localhost:${env.SERVER_PORT}`);
-});
+})
