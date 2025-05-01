@@ -7,4 +7,9 @@ export class InMemoryRoleRepository implements RoleRepository {
 	async create(role: Role) {
 		this.roles.push(role);
 	}
+
+	async findBySlug(slug: string) {
+		const role = this.roles.find(x => x.slug === slug) || null
+		return role
+	}
 }

@@ -8,6 +8,9 @@
 		"test:coverage": "vitest run --coverage",
 		"test:ui": "vitest --ui",
 		"test:watch": "vitest",
+		"db:migrate": "pnpm env:load prisma migrate dev",
+		"db:migrate-deploy": "pnpm env:load prisma migrate deploy",
+		"db:studio": "pnpm env:load prisma studio",
 		"dev": "pnpm env:load tsx watch src/infra/http/server.ts",
 		"env:load": "dotenv -e ../../.env"
 	},

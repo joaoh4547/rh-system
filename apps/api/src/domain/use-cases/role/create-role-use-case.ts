@@ -1,4 +1,5 @@
 
+import { ResourceAlreadyExistsError } from "@/domain/exceptions/resource-already-exists";
 import type { RoleRepository } from "@/domain/repositories/role-repository";
 import type { Role } from "@/schema/role";
 
@@ -26,6 +27,13 @@ export class CreateRoleUseCase {
 			slug: slugify(name),
 			active: true,
 		};
+
+		const roleWithSameSlug = await this.roleRepository.findBySlug(role.slug)
+
+		if(roleWithSameSlug){
+			throw new ResourceAlreadyExistsError('Already exists role with same name')
+		}
+
 
 		await this.roleRepository.create(role);
 		return {
