@@ -1,8 +1,8 @@
 
-import type { Role } from "@/schema/role";
+import type { CreateRole, Role } from "@/schema/role";
 
 export interface RoleRepository {
-	create(role: Role): Promise<void>;
+	create(role: CreateRole): Promise<void>;
 
 	findBySlug(slug: string): Promise<Role | null>
 }

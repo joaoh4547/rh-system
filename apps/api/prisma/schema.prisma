@@ -15,9 +15,10 @@ datasource db {
 }
 
 model Role {
-  id   String @id @default(cuid())
-  name String
-  slug String @unique
+  id     String  @id @default(cuid())
+  name   String
+  slug   String  @unique
+  active Boolean @default(true)
 
   @@map("role")
 }

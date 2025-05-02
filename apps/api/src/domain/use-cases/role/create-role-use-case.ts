@@ -1,7 +1,6 @@
 
 import { ResourceAlreadyExistsError } from "@/domain/exceptions/resource-already-exists";
 import type { RoleRepository } from "@/domain/repositories/role-repository";
-import type { Role } from "@/schema/role";
 
 import { slugify } from "@rh-system/utils/slugfy";
 
@@ -22,7 +21,7 @@ export class CreateRoleUseCase {
 	async handle({
 		name,
 	}: CreateRoleUseInputParams): Promise<CreateRoleUseCaseResult> {
-		const role: Role = {
+		const role = {
 			name,
 			slug: slugify(name),
 			active: true,

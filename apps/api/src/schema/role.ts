@@ -1,10 +1,11 @@
-import {z} from "zod";
+import { z } from "zod";
 
 export const createRoleSchema = z.object({
-	name: z.string(),
+	name: z.string().min(0,{message: 'Name is required'}),
 });
 
-const roleSchema = z.object({
+export const roleSchema = z.object({
+	id: z.string().cuid(),
 	name: z.string(),
 	slug: z.string(),
 	active: z.boolean(),

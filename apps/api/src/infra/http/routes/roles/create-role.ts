@@ -1,4 +1,3 @@
-import * as console from "node:console";
 
 import { CreateRoleUseCase } from "@/domain/use-cases/role/create-role-use-case";
 import { PrismaRoleRepository } from "@/infra/database/prisma/repositories/prisma-role-repository";
@@ -19,6 +18,7 @@ export async function createRole(app: FastifyInstance) {
 				body: createRoleSchema,
 				response: {
 					201: z.null(),
+					
 				},
 			},
 		},
@@ -27,9 +27,7 @@ export async function createRole(app: FastifyInstance) {
 
 			const useCase = new CreateRoleUseCase(new PrismaRoleRepository());
 
-			const { role } = await useCase.handle({ name });
-
-			console.log(role);
+			await useCase.handle({ name });
 
 			return reply.status(201).send();
 		},
