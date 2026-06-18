@@ -1,4 +1,4 @@
-package com.rhsystem.interfaces.ui;
+package com.rhsystem.interfaces.ui.auth;
 
 import com.rhsystem.application.usecase.usuario.SolicitarRedefinicaoSenha;
 import com.vaadin.flow.component.button.Button;

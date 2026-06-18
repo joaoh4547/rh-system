@@ -1,4 +1,4 @@
-package com.rhsystem.interfaces.ui;
+package com.rhsystem.interfaces.ui.auth;
 
 import com.rhsystem.application.dto.ResultadoLogin;
 import com.rhsystem.application.usecase.usuario.AceitarTermos;

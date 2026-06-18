@@ -1,6 +1,6 @@
 package com.rhsystem.infrastructure.config;
 
-import com.rhsystem.interfaces.ui.LoginView;
+import com.rhsystem.interfaces.ui.auth.LoginView;
 import com.vaadin.flow.spring.security.VaadinSecurityConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

@@ -1,4 +1,4 @@
-package com.rhsystem.interfaces.ui;
+package com.rhsystem.interfaces.ui.auth;
 
 import com.rhsystem.application.dto.AtivacaoCommand;
 import com.rhsystem.application.exception.RegraNegocioException;

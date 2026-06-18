@@ -1,4 +1,6 @@
-package com.rhsystem.interfaces.ui;
+package com.rhsystem.interfaces.ui.usuario;
+
+import com.rhsystem.interfaces.ui.MainLayout;
 
 import com.rhsystem.application.exception.RegraNegocioException;
 import com.rhsystem.application.usecase.usuario.AtualizarUsuario;
@@ -119,74 +121,78 @@ public class UsuarioListView extends VerticalLayout {
         grid.addColumn(u -> formatarCpf(u.getCpf())).setHeader("CPF").setAutoWidth(true);
         grid.addColumn(new ComponentRenderer<>(this::criarBadgeStatus)).setHeader("Status").setAutoWidth(true);
         grid.addColumn(new ComponentRenderer<>(this::criarAcoes))
-                .setHeader("Ações").setAutoWidth(true).setFlexGrow(0).setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END);
+                .setHeader("Ações").setAutoWidth(true).setFlexGrow(0)
+                .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END);
         grid.setSizeFull();
+    }
+
+    private Span criarBadgeStatus(Usuario usuario) {
+        StatusUsuario status = usuario.getStatus();
+        Span badge = new Span(status.getDescricao());
+        String theme = switch (status) {
+            case ATIVO -> "badge success";
+            case PENDENTE_CONFIRMACAO -> "badge";
+            case BLOQUEADO -> "badge error";
+            case INATIVO -> "badge contrast";
+        };
+        badge.getElement().setAttribute("theme", theme);
+        return badge;
     }
 
     private HorizontalLayout criarAcoes(Usuario usuario) {
         Button editar = new Button(VaadinIcon.EDIT.create(), e -> abrirFormulario(usuario));
-        editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ICON);
+        editar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ICON);
         editar.getElement().setAttribute("title", "Editar");
 
-        Button excluir = new Button(VaadinIcon.TRASH.create(), e -> confirmarExclusao(usuario));
-        excluir.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_ERROR);
-        excluir.getElement().setAttribute("title", "Excluir");
+        Button remover = new Button(VaadinIcon.TRASH.create(), e -> confirmarRemocao(usuario));
+        remover.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL,
+                ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_ERROR);
+        remover.getElement().setAttribute("title", "Remover");
 
-        HorizontalLayout acoes = new HorizontalLayout(editar, excluir);
+        HorizontalLayout acoes = new HorizontalLayout(editar, remover);
         acoes.setSpacing(false);
         acoes.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
         return acoes;
     }
 
-    private Span criarBadgeStatus(Usuario usuario) {
-        Span badge = new Span(usuario.getStatus().getDescricao());
-        String tema = switch (usuario.getStatus()) {
-            case ATIVO -> "badge success";
-            case INATIVO -> "badge contrast";
-            case BLOQUEADO -> "badge error";
-            case PENDENTE_CONFIRMACAO -> "badge";
-        };
-        badge.getElement().getThemeList().add(tema);
-        return badge;
+    private void abrirFormulario(Usuario usuario) {
+        UsuarioFormDialog dialog =
+                new UsuarioFormDialog(criarUsuario, atualizarUsuario, usuario, this::atualizar);
+        dialog.open();
+    }
+
+    private void confirmarRemocao(Usuario usuario) {
+        ConfirmDialog dialog = new ConfirmDialog();
+        dialog.setHeader("Remover usuário");
+        dialog.setText("Tem certeza que deseja remover \"" + usuario.getNomeCompleto() + "\"?");
+        dialog.setCancelable(true);
+        dialog.setConfirmText("Remover");
+        dialog.setConfirmButtonTheme("error primary");
+        dialog.addConfirmListener(e -> {
+            try {
+                removerUsuario.executar(usuario.getId());
+                Notification.show("Usuário removido.")
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                atualizar();
+            } catch (RegraNegocioException ex) {
+                Notification.show(ex.getMessage())
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        dialog.open();
+    }
+
+    private String formatarCpf(String cpf) {
+        if (cpf == null || cpf.length() != 11) {
+            return cpf;
+        }
+        return cpf.substring(0, 3) + "." + cpf.substring(3, 6) + "."
+                + cpf.substring(6, 9) + "-" + cpf.substring(9);
     }
 
     private void atualizar() {
         java.util.List<Usuario> usuarios = listarUsuarios.executar();
         grid.setItems(usuarios);
         atualizarStats(usuarios);
-    }
-
-    private void abrirFormulario(Usuario usuario) {
-        new UsuarioFormDialog(criarUsuario, atualizarUsuario, usuario, this::atualizar).open();
-    }
-
-    private void confirmarExclusao(Usuario usuario) {
-        ConfirmDialog dialog = new ConfirmDialog();
-        dialog.setHeader("Excluir usuário");
-        dialog.setText("Deseja realmente excluir \"" + usuario.getNomeCompleto() + "\"? Esta ação não pode ser desfeita.");
-        dialog.setCancelable(true);
-        dialog.setCancelText("Cancelar");
-        dialog.setConfirmText("Excluir");
-        dialog.setConfirmButtonTheme("error primary");
-        dialog.addConfirmListener(e -> excluir(usuario));
-        dialog.open();
-    }
-
-    private void excluir(Usuario usuario) {
-        try {
-            removerUsuario.executar(usuario.getId());
-            Notification.show("Usuário excluído.").addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-            atualizar();
-        } catch (RegraNegocioException ex) {
-            Notification.show(ex.getMessage()).addThemeVariants(NotificationVariant.LUMO_ERROR);
-        }
-    }
-
-    private static String formatarCpf(String cpf) {
-        if (cpf == null || cpf.length() != 11) {
-            return cpf;
-        }
-        return cpf.substring(0, 3) + "." + cpf.substring(3, 6) + "."
-                + cpf.substring(6, 9) + "-" + cpf.substring(9);
     }
 }

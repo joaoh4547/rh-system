@@ -11,6 +11,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.spring.security.AuthenticationContext;
+import com.rhsystem.interfaces.ui.usuario.UsuarioListView;
 
 import jakarta.annotation.security.PermitAll;
 
