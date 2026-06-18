@@ -1,0 +1,15 @@
+/* Campo com fundo opaco (mesmo no autofill) */
+[part="input-field"] {
+    background-color: var(--field-bg) !important;
+}
+::slotted(input:-webkit-autofill),
+::slotted(input:-webkit-autofill:hover),
+::slotted(input:-webkit-autofill:focus),
+::slotted(input:-webkit-autofill:active),
+input:-webkit-autofill {
+    -webkit-text-fill-color: var(--lumo-body-text-color) !important;
+    -webkit-box-shadow: inset 0 0 0 1000px var(--field-bg) !important;
+    box-shadow: inset 0 0 0 1000px var(--field-bg) !important;
+    caret-color: var(--lumo-body-text-color) !important;
+    transition: background-color 600000s 0s, color 600000s 0s !important;
+}
