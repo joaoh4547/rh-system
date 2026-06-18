@@ -5,7 +5,8 @@ import com.rhsystem.application.dto.DocumentoUpload;
 import com.rhsystem.application.dto.EnderecoDTO;
 import com.rhsystem.application.dto.NovoUsuarioCommand;
 import com.rhsystem.application.exception.RegraNegocioException;
-import com.rhsystem.application.service.UsuarioService;
+import com.rhsystem.application.usecase.usuario.AtualizarUsuario;
+import com.rhsystem.application.usecase.usuario.CriarUsuario;
 import com.rhsystem.domain.model.usuario.StatusUsuario;
 import com.rhsystem.domain.model.usuario.Usuario;
 import com.rhsystem.interfaces.ui.component.CampoDocumento;
@@ -32,7 +33,8 @@ import java.util.List;
  */
 public class UsuarioFormDialog extends Dialog {
 
-    private final UsuarioService usuarioService;
+    private final CriarUsuario criarUsuario;
+    private final AtualizarUsuario atualizarUsuario;
     private final Usuario edicao;
     private final Runnable onSaved;
 
@@ -52,8 +54,10 @@ public class UsuarioFormDialog extends Dialog {
     private final MultiFileMemoryBuffer buffer = new MultiFileMemoryBuffer();
     private final Upload upload = new Upload(buffer);
 
-    public UsuarioFormDialog(UsuarioService usuarioService, Usuario edicao, Runnable onSaved) {
-        this.usuarioService = usuarioService;
+    public UsuarioFormDialog(CriarUsuario criarUsuario, AtualizarUsuario atualizarUsuario,
+                             Usuario edicao, Runnable onSaved) {
+        this.criarUsuario = criarUsuario;
+        this.atualizarUsuario = atualizarUsuario;
         this.edicao = edicao;
         this.onSaved = onSaved;
 
@@ -147,13 +151,13 @@ public class UsuarioFormDialog extends Dialog {
                     complemento.getValue(), cep.getValue());
 
             if (edicao == null) {
-                usuarioService.criar(new NovoUsuarioCommand(
+                criarUsuario.executar(new NovoUsuarioCommand(
                         nome.getValue(), sobrenome.getValue(), email.getValue(),
                         cpf.getDigitos(), rg.getDigitos(), endereco, lerAnexos()));
                 Notification.show("Usuário criado. Email de ativação enviado.")
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             } else {
-                usuarioService.atualizar(new AtualizarUsuarioCommand(
+                atualizarUsuario.executar(new AtualizarUsuarioCommand(
                         edicao.getId(), nome.getValue(), sobrenome.getValue(), email.getValue(),
                         cpf.getDigitos(), rg.getDigitos(), status.getValue(), endereco));
                 Notification.show("Usuário atualizado.")

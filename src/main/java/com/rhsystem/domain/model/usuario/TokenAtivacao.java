@@ -1,6 +1,8 @@
 package com.rhsystem.domain.model.usuario;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -41,11 +43,16 @@ public class TokenAtivacao {
     @Column(name = "usado", nullable = false)
     private boolean usado = false;
 
-    public TokenAtivacao(Usuario usuario, LocalDateTime expiraEm) {
+    @Enumerated(EnumType.STRING)
+    @Column(name = "finalidade", nullable = false)
+    private FinalidadeToken finalidade = FinalidadeToken.ATIVACAO;
+
+    public TokenAtivacao(Usuario usuario, LocalDateTime expiraEm, FinalidadeToken finalidade) {
         this.usuario = usuario;
         this.token = UUID.randomUUID().toString();
         this.expiraEm = expiraEm;
         this.usado = false;
+        this.finalidade = finalidade;
     }
 
     public boolean isValido() {

@@ -34,6 +34,11 @@ public class UsuarioRepositoryAdapter implements UsuarioRepository {
     }
 
     @Override
+    public Optional<Usuario> buscarPorUsername(String username) {
+        return jpa.findByUsername(username);
+    }
+
+    @Override
     public List<Usuario> listarTodos() {
         return jpa.findAll();
     }

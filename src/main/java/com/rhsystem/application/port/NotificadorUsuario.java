@@ -15,4 +15,9 @@ public interface NotificadorUsuario {
      * @param token   token de ativação a ser embutido no link
      */
     void enviarAtivacao(Usuario usuario, String token);
+
+    /**
+     * Envia o email de redefinição de senha contendo o link com o token.
+     */
+    void enviarRedefinicaoSenha(Usuario usuario, String token);
 }

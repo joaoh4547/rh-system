@@ -80,6 +80,10 @@ public class Usuario {
     @Column(name = "atualizado_em")
     private LocalDateTime atualizadoEm;
 
+    /** Data/hora em que o usuário aceitou os termos de uso (nulo = pendente). */
+    @Column(name = "termos_aceito_em")
+    private LocalDateTime termosAceitoEm;
+
     /** Nome completo do usuário. */
     public String getNomeCompleto() {
         return nome + " " + sobrenome;
@@ -95,5 +99,19 @@ public class Usuario {
     public void ativar(String senhaComHash) {
         this.senha = senhaComHash;
         this.status = StatusUsuario.ATIVO;
+    }
+
+    /** Define uma nova senha (já com hash). */
+    public void redefinirSenha(String senhaComHash) {
+        this.senha = senhaComHash;
+    }
+
+    /** Registra o aceite dos termos de uso. */
+    public void aceitarTermos() {
+        this.termosAceitoEm = LocalDateTime.now();
+    }
+
+    public boolean termosAceitos() {
+        return termosAceitoEm != null;
     }
 }

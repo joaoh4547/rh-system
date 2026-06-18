@@ -1,7 +1,10 @@
 package com.rhsystem.interfaces.ui;
 
 import com.rhsystem.application.exception.RegraNegocioException;
-import com.rhsystem.application.service.UsuarioService;
+import com.rhsystem.application.usecase.usuario.AtualizarUsuario;
+import com.rhsystem.application.usecase.usuario.CriarUsuario;
+import com.rhsystem.application.usecase.usuario.ListarUsuarios;
+import com.rhsystem.application.usecase.usuario.RemoverUsuario;
 import com.rhsystem.domain.model.usuario.StatusUsuario;
 import com.rhsystem.domain.model.usuario.Usuario;
 import com.rhsystem.interfaces.ui.component.StatCard;
@@ -33,11 +36,18 @@ import jakarta.annotation.security.PermitAll;
 @PermitAll
 public class UsuarioListView extends VerticalLayout {
 
-    private final UsuarioService usuarioService;
+    private final ListarUsuarios listarUsuarios;
+    private final CriarUsuario criarUsuario;
+    private final AtualizarUsuario atualizarUsuario;
+    private final RemoverUsuario removerUsuario;
     private final Grid<Usuario> grid = new Grid<>(Usuario.class, false);
 
-    public UsuarioListView(UsuarioService usuarioService) {
-        this.usuarioService = usuarioService;
+    public UsuarioListView(ListarUsuarios listarUsuarios, CriarUsuario criarUsuario,
+                           AtualizarUsuario atualizarUsuario, RemoverUsuario removerUsuario) {
+        this.listarUsuarios = listarUsuarios;
+        this.criarUsuario = criarUsuario;
+        this.atualizarUsuario = atualizarUsuario;
+        this.removerUsuario = removerUsuario;
         setSizeFull();
         setPadding(true);
         setSpacing(true);
@@ -141,13 +151,13 @@ public class UsuarioListView extends VerticalLayout {
     }
 
     private void atualizar() {
-        java.util.List<Usuario> usuarios = usuarioService.listar();
+        java.util.List<Usuario> usuarios = listarUsuarios.executar();
         grid.setItems(usuarios);
         atualizarStats(usuarios);
     }
 
     private void abrirFormulario(Usuario usuario) {
-        new UsuarioFormDialog(usuarioService, usuario, this::atualizar).open();
+        new UsuarioFormDialog(criarUsuario, atualizarUsuario, usuario, this::atualizar).open();
     }
 
     private void confirmarExclusao(Usuario usuario) {
@@ -164,7 +174,7 @@ public class UsuarioListView extends VerticalLayout {
 
     private void excluir(Usuario usuario) {
         try {
-            usuarioService.remover(usuario.getId());
+            removerUsuario.executar(usuario.getId());
             Notification.show("Usuário excluído.").addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             atualizar();
         } catch (RegraNegocioException ex) {

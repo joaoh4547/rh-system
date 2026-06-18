@@ -38,4 +38,23 @@ public class EmailNotificadorUsuario implements NotificadorUsuario {
                 + "RH System");
         mailSender.send(mensagem);
     }
+
+    @Override
+    public void enviarRedefinicaoSenha(Usuario usuario, String token) {
+        String link = properties.getBaseUrl() + "/redefinir/" + token;
+
+        SimpleMailMessage mensagem = new SimpleMailMessage();
+        mensagem.setFrom(properties.getMailFrom());
+        mensagem.setTo(usuario.getEmail());
+        mensagem.setSubject("Redefinição de senha - RH System");
+        mensagem.setText(
+                "Olá " + usuario.getNome() + ",\n\n"
+                + "Recebemos uma solicitação para redefinir a senha da sua conta (" + usuario.getUsername() + ").\n"
+                + "Para criar uma nova senha, acesse o link abaixo:\n\n"
+                + link + "\n\n"
+                + "O link expira em " + properties.getAtivacaoTokenValidadeHoras() + " horas.\n"
+                + "Se você não solicitou, ignore este email.\n\n"
+                + "RH System");
+        mailSender.send(mensagem);
+    }
 }

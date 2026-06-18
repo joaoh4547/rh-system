@@ -2,7 +2,7 @@ package com.rhsystem.interfaces.ui;
 
 import com.rhsystem.application.dto.AtivacaoCommand;
 import com.rhsystem.application.exception.RegraNegocioException;
-import com.rhsystem.application.service.UsuarioService;
+import com.rhsystem.application.usecase.usuario.AtivarUsuario;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
@@ -24,7 +24,7 @@ import com.vaadin.flow.server.auth.AnonymousAllowed;
 @AnonymousAllowed
 public class AtivacaoView extends VerticalLayout implements HasUrlParameter<String> {
 
-    private final UsuarioService usuarioService;
+    private final AtivarUsuario ativarUsuario;
 
     private final PasswordField senha = new PasswordField("Nova senha");
     private final PasswordField confirmacao = new PasswordField("Confirme a senha");
@@ -32,8 +32,8 @@ public class AtivacaoView extends VerticalLayout implements HasUrlParameter<Stri
 
     private String token;
 
-    public AtivacaoView(UsuarioService usuarioService) {
-        this.usuarioService = usuarioService;
+    public AtivacaoView(AtivarUsuario ativarUsuario) {
+        this.ativarUsuario = ativarUsuario;
         setSizeFull();
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.CENTER);
@@ -55,7 +55,7 @@ public class AtivacaoView extends VerticalLayout implements HasUrlParameter<Stri
 
     private void ativar() {
         try {
-            usuarioService.ativar(new AtivacaoCommand(token, senha.getValue(), confirmacao.getValue()));
+            ativarUsuario.executar(new AtivacaoCommand(token, senha.getValue(), confirmacao.getValue()));
             Notification.show("Conta ativada com sucesso! Você já pode fazer login.", 5000,
                     Notification.Position.MIDDLE);
             ativar.getUI().ifPresent(ui -> ui.navigate("login"));

@@ -10,6 +10,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  */
 @SpringBootApplication
 @Theme("rh-system")
+
 public class RhSystemApplication implements AppShellConfigurator {
 
     public static void main(String[] args) {
