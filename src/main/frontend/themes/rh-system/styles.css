@@ -131,9 +131,18 @@ vaadin-app-layout::part(drawer) {
 
 .app-nav { padding: 0 var(--lumo-space-s) var(--lumo-space-s); }
 
-/* Itens compactos */
+/* Itens compactos. A cor do texto no Vaadin 25 vem da custom property
+   --vaadin-side-nav-item-text-color (o link/rótulo herda dela). */
+/* Cor do texto FIXA em qualquer estado (hover, atual, expandido...).
+   O Lumo aplica `color` direto no [part=link] no hover/current, então
+   precisamos travar tanto a custom property quanto o color do ::part(link). */
+vaadin-side-nav-item,
+vaadin-side-nav-item::part(content),
+vaadin-side-nav-item::part(link) {
+    --vaadin-side-nav-item-text-color: var(--app-sidebar-fg-strong) !important;
+    color: var(--app-sidebar-fg-strong) !important;
+}
 vaadin-side-nav-item::part(content) {
-    color: var(--app-sidebar-fg);
     border-radius: var(--lumo-border-radius-s);
     min-height: 0;
     padding-block: .38rem;
@@ -142,19 +151,14 @@ vaadin-side-nav-item::part(content) {
     font-weight: 600;
     transition: background-color .15s ease, color .15s ease;
 }
-vaadin-side-nav-item::part(toggle-button) { color: var(--app-sidebar-fg); margin-inline-start: auto; }
-vaadin-side-nav-item vaadin-icon { color: var(--app-sidebar-fg); width: 1rem; height: 1rem; }
-vaadin-side-nav-item:hover::part(content) {
-    background: rgba(148, 163, 184, 0.20);
-    color: #ffffff;
-}
-vaadin-side-nav-item:hover,
-vaadin-side-nav-item:hover [slot="label"] { color: #ffffff; }
-vaadin-side-nav-item:hover vaadin-icon { color: #ffffff; }
+vaadin-side-nav-item::part(toggle-button) { color: var(--app-sidebar-fg-strong) !important; margin-inline-start: auto; }
+vaadin-side-nav-item vaadin-icon { color: var(--app-sidebar-fg-strong) !important; width: 1rem; height: 1rem; }
 
-/* Grupo pai expandido: leve destaque do rótulo */
-vaadin-side-nav-item[expanded] > [slot="label"],
-vaadin-side-nav-item:hover vaadin-icon { color: var(--app-sidebar-fg-strong); }
+/* Hover: realça só o fundo do item efetivamente sob o mouse.
+   O :not(:has(...)) evita que o pai realce ao passar o mouse num sub-item. */
+vaadin-side-nav-item:hover:not(:has(vaadin-side-nav-item:hover))::part(content) {
+    background: rgba(148, 163, 184, 0.15);
+}
 
 /* Sub-itens (hierarquia) — recuo e fonte menor */
 vaadin-side-nav-item vaadin-side-nav-item::part(content) {
@@ -168,14 +172,10 @@ vaadin-side-nav-item vaadin-side-nav-item::part(content)::before {
     background: currentColor; opacity: .45; transform: translateY(-50%);
 }
 
-/* Item ativo */
-vaadin-side-nav-item[active]::part(content) {
-    background: linear-gradient(90deg, #475569, #64748b);
-    color: #fff;
-    box-shadow: 0 3px 10px rgba(0,0,0,.35);
+/* Item atual: apenas um realce de fundo (um pouco mais firme que o hover) */
+vaadin-side-nav-item[current]::part(content) {
+    background: rgba(148, 163, 184, 0.22);
 }
-vaadin-side-nav-item[active] vaadin-icon { color: #fff; }
-vaadin-side-nav-item[active]::part(content)::before { background: #fff; opacity: .9; }
 
 /* ====================================================================
    CONTEÚDO / PÁGINA
@@ -272,7 +272,19 @@ vaadin-button[theme~="primary"]:hover { filter: brightness(1.05); }
    DIÁLOGO / TABS
    ==================================================================== */
 vaadin-dialog-overlay::part(overlay) { border-radius: var(--lumo-border-radius-l); box-shadow: var(--shadow-lg); }
-vaadin-dialog-overlay::part(header) { font-weight: 700; }
+vaadin-dialog-overlay::part(header) { font-weight: 700; align-items: center; gap: .15rem; }
+vaadin-dialog-overlay::part(header-content) { flex: 1; }
+.dialog-header-button { color: var(--lumo-secondary-text-color); }
+.dialog-header-button:hover { color: var(--lumo-body-text-color); background: var(--lumo-contrast-10pct); }
+
+/* Diálogo maximizado: ocupa a tela inteira ignorando o offset do arraste */
+vaadin-dialog-overlay[theme~="maximized"]::part(overlay) {
+    top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+    transform: none !important;
+    width: 100vw !important; height: 100vh !important;
+    max-width: 100vw !important; max-height: 100vh !important;
+    border-radius: 0 !important;
+}
 
 /* ====================================================================
    LOGIN
@@ -312,14 +324,7 @@ vaadin-dialog-overlay::part(header) { font-weight: 700; }
 html, body { overflow-x: hidden; }
 
 /* ====================================================================
-   Correção de contraste do menu (texto em slot herda cor do HOST)
+   Cor base do menu (o realce de hover/atual é só de fundo, ver acima)
    ==================================================================== */
-vaadin-side-nav-item { color: var(--app-sidebar-fg); }
-vaadin-side-nav-item:hover { color: #ffffff; }
-vaadin-side-nav-item:hover vaadin-icon { color: #ffffff; }
-vaadin-side-nav-item[active] { color: #ffffff; }
-vaadin-side-nav-item[active] vaadin-icon { color: #ffffff; }
-
-/* fundo do realce mantém-se via ::part(content) */
-vaadin-side-nav-item:hover::part(content) { background: rgba(148, 163, 184, 0.20); }
+vaadin-side-nav-item { color: var(--app-sidebar-fg-strong); }
 
