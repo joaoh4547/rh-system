@@ -1,5 +1,6 @@
 package com.rhsystem.domain.repository;
 
+import com.rhsystem.domain.model.usuario.StatusUsuario;
 import com.rhsystem.domain.model.usuario.Usuario;
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +20,20 @@ public interface UsuarioRepository {
     Optional<Usuario> buscarPorUsername(String username);
 
     List<Usuario> listarTodos();
+
+    /**
+     * Retorna uma página de usuários ordenada por nome.
+     *
+     * @param offset posição inicial (0-based)
+     * @param limite quantidade máxima de registros
+     */
+    List<Usuario> listarPaginado(int offset, int limite);
+
+    /** Total de usuários cadastrados. */
+    int contar();
+
+    /** Total de usuários em determinado status. */
+    int contarPorStatus(StatusUsuario status);
 
     void remover(Usuario usuario);
 

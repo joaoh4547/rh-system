@@ -11,7 +11,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.spring.security.AuthenticationContext;
-import com.rhsystem.interfaces.ui.usuario.UsuarioListView;
+import com.rhsystem.interfaces.ui.usuario.UsuarioPage;
 
 import jakarta.annotation.security.PermitAll;
 
@@ -85,7 +85,7 @@ public class MainLayout extends AppLayout {
         // Grupo: Recursos Humanos
         SideNavItem rh = new SideNavItem("Recursos Humanos");
         rh.setPrefixComponent(VaadinIcon.USERS.create());
-        rh.addItem(new SideNavItem("Usuários", UsuarioListView.class, VaadinIcon.USER.create()));
+        rh.addItem(new SideNavItem("Usuários", UsuarioPage.class, VaadinIcon.USER.create()));
         rh.setExpanded(true);
 
         // Grupo: Configurações (itens de exemplo, sem rota ainda)

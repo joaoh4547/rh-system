@@ -1,9 +1,12 @@
 package com.rhsystem.infrastructure.persistence;
 
+import com.rhsystem.domain.model.usuario.StatusUsuario;
 import com.rhsystem.domain.model.usuario.Usuario;
 import com.rhsystem.domain.repository.UsuarioRepository;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
 /**
@@ -41,6 +44,23 @@ public class UsuarioRepositoryAdapter implements UsuarioRepository {
     @Override
     public List<Usuario> listarTodos() {
         return jpa.findAll();
+    }
+
+    @Override
+    public List<Usuario> listarPaginado(int offset, int limite) {
+        int pagina = limite > 0 ? offset / limite : 0;
+        var pageable = PageRequest.of(pagina, limite, Sort.by("nomeCompleto").ascending());
+        return jpa.findAll(pageable).getContent();
+    }
+
+    @Override
+    public int contar() {
+        return (int) jpa.count();
+    }
+
+    @Override
+    public int contarPorStatus(StatusUsuario status) {
+        return (int) jpa.countByStatus(status);
     }
 
     @Override

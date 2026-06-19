@@ -166,11 +166,6 @@ vaadin-side-nav-item vaadin-side-nav-item::part(content) {
     font-size: .78rem;
     font-weight: 500;
 }
-vaadin-side-nav-item vaadin-side-nav-item::part(content)::before {
-    content: ""; position: absolute; left: 1.1rem; top: 50%;
-    width: 5px; height: 5px; border-radius: 50%;
-    background: currentColor; opacity: .45; transform: translateY(-50%);
-}
 
 /* Item atual: apenas um realce de fundo (um pouco mais firme que o hover) */
 vaadin-side-nav-item[current]::part(content) {
