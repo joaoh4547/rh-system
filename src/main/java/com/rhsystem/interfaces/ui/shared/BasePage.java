@@ -1,6 +1,6 @@
 package com.rhsystem.interfaces.ui.shared;
 
-import com.rhsystem.application.exception.RegraNegocioException;
+import com.rhsystem.application.exception.BusinessException;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.html.Div;
@@ -12,46 +12,46 @@ import jakarta.annotation.Nullable;
 import jakarta.annotation.PostConstruct;
 
 /**
- * Página base para CRUDs com persistência via serviços/use-cases.
+ * Base page for CRUDs with persistence via services/use-cases.
  *
- * <p><b>Responsabilidades desta camada:</b>
+ * <p><b>Responsibilities of this layer:</b>
  * <ul>
- *   <li>Layout de página completo (cabeçalho, KPIs, card com grid).</li>
- *   <li>Grid paginado <b>a nível de banco</b> via {@link DataProvider#fromCallbacks}.</li>
- *   <li>KPIs calculados por use case dedicado — não dependem da lista carregada.</li>
- *   <li>Ciclo de persistência: {@link #remover(Object)}.</li>
+ *   <li>Full page layout (header, KPIs, card with grid).</li>
+ *   <li>Database-level paginated grid via {@link DataProvider#fromCallbacks}.</li>
+ *   <li>KPIs calculated by a dedicated use case — do not depend on the loaded list.</li>
+ *   <li>Persistence cycle: {@link #remove(Object)}.</li>
  * </ul>
  *
- * <p><b>Diferença em relação ao {@link DataEditor}:</b>
- * {@code DataEditor} mantém dados em memória (para sub-editores embutidos em formulários).
- * {@code BasePage} <em>nunca</em> carrega todos os registros — delega sempre ao banco
- * via {@link DataProvider} e usa use cases agregados para os KPIs.
+ * <p><b>Difference from {@link DataEditor}:</b>
+ * {@code DataEditor} keeps data in memory (for sub-editors embedded in forms).
+ * {@code BasePage} <em>never</em> loads all records — always delegates to the database
+ * via {@link DataProvider} and uses aggregate use cases for KPIs.
  *
- * <h3>Contrato da subclasse</h3>
+ * <h3>Subclass contract</h3>
  * <pre>{@code
- * @Route("usuarios")
- * public class UsuarioPage extends BasePage<Usuario> {
+ * @Route("users")
+ * public class UserPage extends BasePage<User> {
  *
  *     @Override
- *     protected DataProvider<Usuario, Void> criarDataProvider() {
+ *     protected DataProvider<User, Void> buildDataProvider() {
  *         return DataProvider.fromCallbacks(
- *             q -> listarUsuarios.executar(q.getOffset(), q.getLimit()),
- *             q -> contarUsuarios.executar()
+ *             q -> listUsers.execute(q.getOffset(), q.getLimit()),
+ *             q -> getUserSummary.execute().total()
  *         );
  *     }
  *
  *     @Override
- *     protected Component criarStats() {
- *         var resumo = buscarResumo.executar();   // use case de agregação
- *         return new Div(new StatCard("Total", resumo.total(), ...));
+ *     protected Component buildStats() {
+ *         var summary = getUserSummary.execute();
+ *         return new Div(new StatCard("Total", summary.total(), ...));
  *     }
  *
  *     @Override
- *     protected void remover(Usuario u) { removerUsuario.executar(u.getId()); }
+ *     protected void remove(User u) { removeUser.execute(u.getId()); }
  * }
  * }</pre>
  *
- * @param <T> tipo do registro gerenciado pela página
+ * @param <T> type of the record managed by the page
  */
 public abstract class BasePage<T> extends DataEditor<T> {
 
@@ -66,124 +66,112 @@ public abstract class BasePage<T> extends DataEditor<T> {
         setSpacing(true);
     }
 
-    /** Inicializado pelo Spring após DI da subclasse — garante use cases disponíveis. */
+    /** Initialised by Spring after DI of the subclass — ensures use cases are available. */
     @PostConstruct
-    private void inicializar() {
-        grid = criarDataGrid(criarObjectActions());
-        dataProvider = criarDataProvider();
+    private void initialize() {
+        grid = buildGrid(buildObjectActions());
+        dataProvider = buildDataProvider();
         grid.setDataProvider(dataProvider);
-        construirLayout();
-        atualizarKpis();
+        buildLayout();
+        refreshKpis();
     }
 
-    /** Desabilita o onAttach do {@link DataEditor}: BasePage usa @PostConstruct. */
+    /** Disables DataEditor's onAttach: BasePage uses @PostConstruct. */
     @Override
     protected void onAttach(AttachEvent event) {
-        // intencional: inicialização via @PostConstruct
+        // intentional: initialisation via @PostConstruct
     }
 
     @Override
-    protected void construirLayout() {
+    protected void buildLayout() {
         statsContainer.addClassName("stats-grid");
         card.addClassName("card");
         card.setSizeFull();
         setFlexGrow(1, card);
-        card.add(criarToolbar(tituloTabela(), labelBotaoNovo()), grid);
-        add(criarCabecalho(), statsContainer, card);
+        card.add(buildToolbar(tableTitle(), newButtonLabel()), grid);
+        add(buildHeader(), statsContainer, card);
     }
 
-    // ── Metadados ─────────────────────────────────────────────────────────────
+    // ── Metadata ──────────────────────────────────────────────────────────────
 
-    protected abstract String tituloPagina();
-    protected abstract String subtituloPagina();
+    protected abstract String pageTitle();
+    protected abstract String pageSubtitle();
 
-    @Override protected abstract String tituloTabela();
-    @Override protected abstract String labelBotaoNovo();
+    @Override protected abstract String tableTitle();
+    @Override protected abstract String newButtonLabel();
 
-    // ── DataProvider (paginação server-side) ──────────────────────────────────
+    // ── DataProvider (server-side pagination) ─────────────────────────────────
 
     /**
-     * Cria o {@link DataProvider} que alimenta o grid com paginação a nível de banco.
-     * O Vaadin chama os callbacks com {@code offset/limit} a cada scroll ou ordenação.
+     * Creates the {@link DataProvider} that feeds the grid with database-level pagination.
+     * Vaadin calls the callbacks with {@code offset/limit} on each scroll or sort.
      *
      * <pre>{@code
      * return DataProvider.fromCallbacks(
-     *     q -> listarUsuarios.executar(q.getOffset(), q.getLimit()),
-     *     q -> contarUsuarios.executar()
+     *     q -> listUsers.execute(q.getOffset(), q.getLimit()),
+     *     q -> getUserSummary.execute().total()
      * );
      * }</pre>
      */
-    protected abstract DataProvider<T, Void> criarDataProvider();
+    protected abstract DataProvider<T, Void> buildDataProvider();
 
     // ── KPIs ──────────────────────────────────────────────────────────────────
 
     /**
-     * Retorna o componente de KPIs renderizado acima do card.
+     * Returns the KPI component rendered above the card.
      *
-     * <p>Implemente chamando um use case de agregação dedicado — não depende
-     * da lista paginada do grid. Retorne {@code null} para omitir a área.
-     *
-     * <pre>{@code
-     * @Override
-     * protected Component criarStats() {
-     *     var r = buscarResumoUsuarios.executar();
-     *     return new Div(
-     *         new StatCard("Total",     r.total(),      ...),
-     *         new StatCard("Ativos",    r.ativos(),     ...),
-     *         new StatCard("Pendentes", r.pendentes(),  ...)
-     *     );
-     * }
-     * }</pre>
+     * <p>Implement by calling a dedicated aggregate use case — does not depend
+     * on the grid's paginated list. Return {@code null} to omit the area.
      */
     @Nullable
-    protected Component criarStats() {
+    protected Component buildStats() {
         return null;
     }
 
-    // ── Persistência ──────────────────────────────────────────────────────────
+    // ── Persistence ───────────────────────────────────────────────────────────
 
     /**
-     * Remove o registro via serviço/repositório.
-     * Lança {@link RegraNegocioException} para sinalizar erros de negócio.
+     * Removes the record via service/repository.
+     * Throws {@link BusinessException} to signal business errors.
      */
-    protected abstract void remover(T item);
+    protected abstract void remove(T item);
 
     @Override
-    protected void executarRemocao(T item) {
+    protected void executeRemoval(T item) {
         try {
-            remover(item);
-            atualizar();
-            notificarSucesso("Registro removido com sucesso.");
-        } catch (RegraNegocioException e) {
-            notificarErro(e.getMessage());
+            remove(item);
+            refresh();
+            notifySuccess(getTranslation("notify.removed"));
+        } catch (BusinessException e) {
+            notifyError(getTranslation(e.getMessage()));
         }
     }
 
     /**
-     * Recarrega o grid (dispara novo fetch/count no banco) e atualiza os KPIs.
-     * Use {@code this::atualizar} como callback nos diálogos de formulário.
+     * Reloads the grid (triggers a new fetch/count in the database) and refreshes the KPIs.
+     * Use {@code this::refresh} as a callback in form dialogs.
      */
     @Override
-    public void atualizar() {
+    public void refresh() {
         dataProvider.refreshAll();
-        atualizarKpis();
+        refreshKpis();
     }
 
     // ── Layout ────────────────────────────────────────────────────────────────
 
-    private Div criarCabecalho() {
-        var titulo = new H2(tituloPagina());
-        titulo.addClassNames(LumoUtility.Margin.NONE);
-        var subtitulo = new Span(subtituloPagina());
-        subtitulo.addClassName("page-subtitle");
-        var cabecalho = new Div(titulo, subtitulo);
-        cabecalho.addClassName("page-header");
-        return cabecalho;
+    private Div buildHeader() {
+        var title = new H2(pageTitle());
+        title.addClassNames(LumoUtility.Margin.NONE);
+        var subtitle = new Span(pageSubtitle());
+        subtitle.addClassName("page-subtitle");
+        var header = new Div(title, subtitle);
+        header.addClassName("page-header");
+        return header;
     }
 
-    private void atualizarKpis() {
+    private void refreshKpis() {
         statsContainer.removeAll();
-        var stats = criarStats();
+        var stats = buildStats();
         if (stats != null) statsContainer.add(stats);
     }
 }

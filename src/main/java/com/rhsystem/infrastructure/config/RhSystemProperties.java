@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 /**
- * Propriedades de configuração da aplicação (prefixo "rh-system").
+ * Application configuration properties (prefix "rh-system").
  */
 @Component
 @ConfigurationProperties(prefix = "rh-system")
@@ -14,15 +14,15 @@ import org.springframework.stereotype.Component;
 @Setter
 public class RhSystemProperties {
 
-    /** URL base para montar o link de ativação. */
+    /** Base URL for building the activation link. */
     private String baseUrl = "http://localhost:8080";
 
-    /** Remetente dos emails. */
+    /** Email sender address. */
     private String mailFrom = "no-reply@rhsystem.com";
 
-    /** Validade do token de ativação, em horas. */
-    private long ativacaoTokenValidadeHoras = 24;
+    /** Activation token validity in hours. */
+    private long activationTokenValidityHours = 24;
 
-    /** Diretório de armazenamento de anexos. */
+    /** Storage directory for attachments. */
     private String storageDir = "./storage/documentos";
 }

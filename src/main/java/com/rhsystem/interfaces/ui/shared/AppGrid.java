@@ -4,31 +4,26 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 
 /**
- * Grid base do sistema com estilização padrão aplicada automaticamente.
+ * Base grid for the system with default styling applied automatically.
  *
- * <p>Todas as grids do sistema devem herdar desta classe para garantir
- * consistência visual sem repetição de configuração.
+ * <p>All grids in the system should extend this class to ensure visual
+ * consistency without repeating configuration.
  *
- * <pre>{@code
- * AppGrid<Usuario> grid = new AppGrid<>(Usuario.class);
- * grid.addColumn(Usuario::getNome).setHeader("Nome").setAutoWidth(true);
- * }</pre>
- *
- * @param <T> tipo do item exibido na grid
+ * @param <T> type of item displayed in the grid
  */
 public class AppGrid<T> extends Grid<T> {
 
     public AppGrid(Class<T> beanType) {
         super(beanType, false);
-        configurar();
+        configure();
     }
 
     public AppGrid() {
         super();
-        configurar();
+        configure();
     }
 
-    private void configurar() {
+    private void configure() {
         addThemeVariants(
                 GridVariant.LUMO_ROW_STRIPES,
                 GridVariant.LUMO_NO_BORDER

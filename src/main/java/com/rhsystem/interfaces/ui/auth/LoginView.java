@@ -1,8 +1,8 @@
 package com.rhsystem.interfaces.ui.auth;
 
-import com.rhsystem.application.dto.ResultadoLogin;
-import com.rhsystem.application.usecase.usuario.AceitarTermos;
-import com.rhsystem.application.usecase.usuario.ValidarLogin;
+import com.rhsystem.application.dto.login.LoginResult;
+import com.rhsystem.application.usecase.usuario.AcceptTerms;
+import com.rhsystem.application.usecase.usuario.ValidateLogin;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -22,22 +22,21 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 
 /**
- * Tela de login. O usuário só é autenticado de fato (POST nativo para o Spring
- * Security) após validar as credenciais e, se necessário, aceitar os termos —
- * mantendo-o na tela de login enquanto não aceitar.
+ * Login screen. The user is only authenticated (native POST to Spring Security) after
+ * credentials are validated and, if needed, terms are accepted.
  */
 @Route("login")
 @PageTitle("Login - RH System")
 @AnonymousAllowed
 public class LoginView extends VerticalLayout implements BeforeEnterObserver {
 
-    private final ValidarLogin validarLogin;
-    private final AceitarTermos aceitarTermos;
-    private final LoginForm login = new LoginForm();
+    private final ValidateLogin validateLogin;
+    private final AcceptTerms acceptTerms;
+    private final LoginForm loginForm = new LoginForm();
 
-    public LoginView(ValidarLogin validarLogin, AceitarTermos aceitarTermos) {
-        this.validarLogin = validarLogin;
-        this.aceitarTermos = aceitarTermos;
+    public LoginView(ValidateLogin validateLogin, AcceptTerms acceptTerms) {
+        this.validateLogin = validateLogin;
+        this.acceptTerms   = acceptTerms;
 
         setSizeFull();
         setAlignItems(Alignment.CENTER);
@@ -47,103 +46,102 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         Span brand = new Span(VaadinIcon.CUBES.create(), new Span(" RH System"));
         brand.addClassName("login-brand");
 
-        Span subtitle = new Span("Faça login para iniciar a sessão");
+        Span subtitle = new Span(getTranslation("login.subtitle"));
         subtitle.addClassName("login-subtitle");
 
-        // Sem setAction: o LoginForm dispara LoginEvent no servidor (não faz POST sozinho).
-        login.setForgotPasswordButtonVisible(true);
-        login.addForgotPasswordListener(e ->
-                getUI().ifPresent(ui -> ui.navigate("esqueci-senha")));
-        login.addLoginListener(e -> processarLogin(e.getUsername(), e.getPassword()));
-        login.setI18n(criarI18n());
+        loginForm.setForgotPasswordButtonVisible(true);
+        loginForm.addForgotPasswordListener(e ->
+                getUI().ifPresent(ui -> ui.navigate("forgot-password")));
+        loginForm.addLoginListener(e -> processLogin(e.getUsername(), e.getPassword()));
+        loginForm.setI18n(buildI18n());
 
-        Div card = new Div(brand, subtitle, login);
+        Div card = new Div(brand, subtitle, loginForm);
         card.addClassName("login-box");
         add(card);
 
-        removerAutofillAmarelo();
+        removeAutofillYellow();
     }
 
-    private void processarLogin(String username, String senha) {
-        ResultadoLogin resultado = validarLogin.executar(username, senha);
-        switch (resultado) {
-            case CREDENCIAIS_INVALIDAS -> {
-                login.setError(true);
-                login.setEnabled(true);
+    private void processLogin(String username, String password) {
+        LoginResult result = validateLogin.execute(username, password);
+        switch (result) {
+            case INVALID_CREDENTIALS -> {
+                loginForm.setError(true);
+                loginForm.setEnabled(true);
             }
-            case TERMOS_PENDENTES -> abrirDialogTermos(username, senha);
-            case OK -> autenticar(username, senha);
+            case TERMS_PENDING -> openTermsDialog(username, password);
+            case OK            -> authenticate(username, password);
         }
     }
 
-    private void abrirDialogTermos(String username, String senha) {
+    private void openTermsDialog(String username, String password) {
         Dialog dialog = new Dialog();
-        dialog.setHeaderTitle("Termos de Uso");
-        dialog.setModal(true);
+        dialog.setHeaderTitle(getTranslation("login.terms.title"));
         dialog.setCloseOnEsc(false);
         dialog.setCloseOnOutsideClick(false);
         dialog.setWidth("560px");
 
-        Div texto = new Div();
-        texto.getStyle().set("max-height", "320px").set("overflow", "auto")
+        Div content = new Div();
+        content.getStyle().set("max-height", "320px").set("overflow", "auto")
                 .set("line-height", "1.55").set("color", "var(--lumo-secondary-text-color)");
-        texto.add(new Paragraph("Para acessar o RH System, você precisa ler e aceitar os Termos de Uso "
-                + "e a Política de Privacidade."));
-        texto.add(new Paragraph("Ao aceitar, você concorda com o tratamento dos seus dados pessoais "
-                + "estritamente para as finalidades de gestão de recursos humanos, em conformidade com a "
-                + "LGPD. Seus dados não serão compartilhados com terceiros sem base legal."));
-        texto.add(new Paragraph("Você pode solicitar a qualquer momento a revisão ou exclusão dos seus "
-                + "dados aos administradores do sistema."));
-        dialog.add(texto);
+        content.add(new Paragraph("To access RH System you must read and accept the Terms of Use "
+                + "and Privacy Policy."));
+        content.add(new Paragraph("By accepting, you agree to the processing of your personal data "
+                + "strictly for human-resources management purposes, in compliance with applicable "
+                + "data-protection law. Your data will not be shared with third parties without a "
+                + "legal basis."));
+        content.add(new Paragraph("You may request review or deletion of your data from system "
+                + "administrators at any time."));
+        dialog.add(content);
 
-        Button recusar = new Button("Recusar", e -> {
+        Button decline = new Button(getTranslation("login.terms.decline"), e -> {
             dialog.close();
-            login.setEnabled(true);
-            Notification.show("É necessário aceitar os termos para acessar o sistema.")
+            loginForm.setEnabled(true);
+            Notification.show(getTranslation("login.terms.declined"))
                     .addThemeVariants(NotificationVariant.LUMO_CONTRAST);
         });
-        recusar.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ERROR);
+        decline.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_ERROR);
 
-        Button aceitar = new Button("Li e aceito", e -> {
-            aceitarTermos.executar(username);
+        Button accept = new Button(getTranslation("login.terms.accept"), e -> {
+            acceptTerms.execute(username);
             dialog.close();
-            autenticar(username, senha);
+            authenticate(username, password);
         });
-        aceitar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        accept.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        dialog.getFooter().add(recusar, aceitar);
+        dialog.getFooter().add(decline, accept);
         dialog.open();
     }
 
-    /** Efetiva o login enviando um POST nativo para o Spring Security. */
-    private void autenticar(String username, String senha) {
+    /** Completes login by submitting a native POST to Spring Security. */
+    private void authenticate(String username, String password) {
         getElement().executeJs(
             "const f=document.createElement('form');" +
             "f.method='post'; f.action='login'; f.style.display='none';" +
             "const u=document.createElement('input'); u.name='username'; u.value=$0; f.appendChild(u);" +
             "const p=document.createElement('input'); p.name='password'; p.value=$1; f.appendChild(p);" +
             "document.body.appendChild(f); f.submit();",
-            username, senha);
+            username, password);
     }
 
-    private LoginI18n criarI18n() {
+    private LoginI18n buildI18n() {
         LoginI18n i18n = LoginI18n.createDefault();
         LoginI18n.Form form = i18n.getForm();
-        form.setTitle("Entrar");
-        form.setUsername("Usuário");
-        form.setPassword("Senha");
-        form.setSubmit("Entrar");
-        form.setForgotPassword("Esqueci minha senha");
+        form.setTitle(getTranslation("login.form.title"));
+        form.setUsername(getTranslation("login.form.username"));
+        form.setPassword(getTranslation("login.form.password"));
+        form.setSubmit(getTranslation("login.form.submit"));
+        form.setForgotPassword(getTranslation("login.form.forgot"));
         i18n.setForm(form);
 
-        LoginI18n.ErrorMessage erro = new LoginI18n.ErrorMessage();
-        erro.setTitle("Falha no login");
-        erro.setMessage("Usuário ou senha inválidos, ou conta não ativada.");
-        i18n.setErrorMessage(erro);
+        LoginI18n.ErrorMessage error = new LoginI18n.ErrorMessage();
+        error.setTitle(getTranslation("login.error.title"));
+        error.setMessage(getTranslation("login.error.message"));
+        i18n.setErrorMessage(error);
         return i18n;
     }
 
-    private void removerAutofillAmarelo() {
+    private void removeAutofillYellow() {
         getElement().executeJs(
             "const css = `[part=\"input-field\"]{background-color: var(--field-bg) !important;}" +
             "::slotted(input:-webkit-autofill),input:-webkit-autofill{" +
@@ -170,7 +168,7 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
         if (event.getLocation().getQueryParameters().getParameters().containsKey("error")) {
-            login.setError(true);
+            loginForm.setError(true);
         }
     }
 }

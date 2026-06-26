@@ -21,6 +21,12 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+  messages:
+    basename: i18n/messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
+    use-code-as-default-message: false
+
   # SMTP do Gmail. Use uma "Senha de app" do Google (não a senha normal da conta).
   # Configure as variáveis MAIL_USERNAME e MAIL_PASSWORD no ambiente.
   mail:

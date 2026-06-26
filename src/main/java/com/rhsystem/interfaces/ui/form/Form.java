@@ -29,31 +29,9 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
- * Base reutilizável para formulários ligados a um bean via {@link Binder}.
+ * Reusable base for forms bound to a bean via {@link Binder}.
  *
- * <p>Além de encapsular o binder e o ciclo de leitura/escrita, oferece um
- * conjunto de <b>fábricas de campos</b> (texto, email, senha, número, data,
- * combo, checkbox...) e helpers de <b>bind</b> e <b>layout</b> para reduzir
- * a repetição na criação de telas de cadastro.</p>
- *
- * <pre>{@code
- * class UsuarioForm extends Form<UsuarioModel> {
- *     UsuarioForm() {
- *         super(UsuarioModel.class);
- *         var nome  = textField("Nome", "nome");                 // cria + bind
- *         var email = requiredEmailField("Email", "email", "Informe o email");
- *         var ativo = checkbox("Ativo", "ativo");
- *         add(formLayout(nome, email, ativo));
- *     }
- * }
- * }</pre>
- *
- * <p><b>Observação:</b> os métodos {@code *(label, property)} usam binding por
- * nome de propriedade e exigem o construtor {@link #Form(Class)} (com tipo do
- * bean). Para binders sem tipo, use {@link #getBinder()} e faça o bind por
- * getter/setter.</p>
- *
- * @param <T> tipo do bean editado
+ * @param <T> type of the bean being edited
  */
 public abstract class Form<T> extends Div {
 
@@ -62,15 +40,15 @@ public abstract class Form<T> extends Div {
 
     protected Form(Class<T> beanType) {
         this.binder = new BeanValidationBinder<>(beanType);
-        inicializar();
+        initialize();
     }
 
     protected Form() {
         this.binder = new Binder<>();
-        inicializar();
+        initialize();
     }
 
-    private void inicializar() {
+    private void initialize() {
         setWidthFull();
         addClassName("rh-form");
     }
@@ -106,38 +84,36 @@ public abstract class Form<T> extends Div {
         return writeBeanIfValid(target) ? Optional.of(target) : Optional.empty();
     }
 
-    /* ===================== Helpers de bind ===================== */
+    /* ===================== Bind helpers ===================== */
 
-    /** Liga um campo a uma propriedade do bean (binding por nome). */
     protected <C extends Component & HasValue<?, V>, V> C bind(C field, String property) {
         binder.forField(field).bind(property);
         return field;
     }
 
-    /** Liga um campo obrigatório a uma propriedade, com mensagem de erro. */
-    protected <C extends Component & HasValue<?, V>, V> C bindRequired(C field, String property, String erro) {
-        binder.forField(field).asRequired(erro).bind(property);
+    protected <C extends Component & HasValue<?, V>, V> C bindRequired(C field, String property, String error) {
+        binder.forField(field).asRequired(error).bind(property);
         return field;
     }
 
-    /* ===================== Fábricas de campos ===================== */
+    /* ===================== Field factories ===================== */
 
     protected TextField textField(String label) {
-        return configurar(new TextField(label));
+        return configure(new TextField(label));
     }
 
     protected TextField textField(String label, String property) {
         return bind(textField(label), property);
     }
 
-    protected TextField requiredTextField(String label, String property, String erro) {
+    protected TextField requiredTextField(String label, String property, String error) {
         TextField f = textField(label);
         f.setRequiredIndicatorVisible(true);
-        return bindRequired(f, property, erro);
+        return bindRequired(f, property, error);
     }
 
     protected EmailField emailField(String label) {
-        EmailField f = configurar(new EmailField(label));
+        EmailField f = configure(new EmailField(label));
         f.setClearButtonVisible(true);
         return f;
     }
@@ -146,14 +122,14 @@ public abstract class Form<T> extends Div {
         return bind(emailField(label), property);
     }
 
-    protected EmailField requiredEmailField(String label, String property, String erro) {
+    protected EmailField requiredEmailField(String label, String property, String error) {
         EmailField f = emailField(label);
         f.setRequiredIndicatorVisible(true);
-        return bindRequired(f, property, erro);
+        return bindRequired(f, property, error);
     }
 
     protected PasswordField passwordField(String label) {
-        return configurar(new PasswordField(label));
+        return configure(new PasswordField(label));
     }
 
     protected PasswordField passwordField(String label, String property) {
@@ -161,7 +137,7 @@ public abstract class Form<T> extends Div {
     }
 
     protected TextArea textArea(String label) {
-        return configurar(new TextArea(label));
+        return configure(new TextArea(label));
     }
 
     protected TextArea textArea(String label, String property) {
@@ -169,7 +145,7 @@ public abstract class Form<T> extends Div {
     }
 
     protected IntegerField integerField(String label) {
-        return configurar(new IntegerField(label));
+        return configure(new IntegerField(label));
     }
 
     protected IntegerField integerField(String label, String property) {
@@ -177,7 +153,7 @@ public abstract class Form<T> extends Div {
     }
 
     protected NumberField numberField(String label) {
-        return configurar(new NumberField(label));
+        return configure(new NumberField(label));
     }
 
     protected NumberField numberField(String label, String property) {
@@ -185,7 +161,7 @@ public abstract class Form<T> extends Div {
     }
 
     protected BigDecimalField bigDecimalField(String label) {
-        return configurar(new BigDecimalField(label));
+        return configure(new BigDecimalField(label));
     }
 
     protected BigDecimalField bigDecimalField(String label, String property) {
@@ -193,7 +169,7 @@ public abstract class Form<T> extends Div {
     }
 
     protected DatePicker datePicker(String label) {
-        return configurar(new DatePicker(label));
+        return configure(new DatePicker(label));
     }
 
     protected DatePicker datePicker(String label, String property) {
@@ -201,7 +177,7 @@ public abstract class Form<T> extends Div {
     }
 
     protected TimePicker timePicker(String label) {
-        return configurar(new TimePicker(label));
+        return configure(new TimePicker(label));
     }
 
     protected TimePicker timePicker(String label, String property) {
@@ -209,7 +185,7 @@ public abstract class Form<T> extends Div {
     }
 
     protected DateTimePicker dateTimePicker(String label) {
-        return configurar(new DateTimePicker(label));
+        return configure(new DateTimePicker(label));
     }
 
     protected DateTimePicker dateTimePicker(String label, String property) {
@@ -225,14 +201,14 @@ public abstract class Form<T> extends Div {
     }
 
     protected <E> ComboBox<E> comboBox(String label, Collection<E> items) {
-        ComboBox<E> cb = configurar(new ComboBox<>(label));
+        ComboBox<E> cb = configure(new ComboBox<>(label));
         cb.setItems(items);
         return cb;
     }
 
     @SafeVarargs
     protected final <E> ComboBox<E> comboBox(String label, E... items) {
-        ComboBox<E> cb = configurar(new ComboBox<>(label));
+        ComboBox<E> cb = configure(new ComboBox<>(label));
         cb.setItems(items);
         return cb;
     }
@@ -242,14 +218,14 @@ public abstract class Form<T> extends Div {
     }
 
     protected <E> ComboBox<E> comboBox(String label, String property, Collection<E> items,
-                                       com.vaadin.flow.component.ItemLabelGenerator<E> rotulo) {
+                                       com.vaadin.flow.component.ItemLabelGenerator<E> labelGenerator) {
         ComboBox<E> cb = comboBox(label, items);
-        cb.setItemLabelGenerator(rotulo);
+        cb.setItemLabelGenerator(labelGenerator);
         return bind(cb, property);
     }
 
     protected <E> Select<E> select(String label, Collection<E> items) {
-        Select<E> sel = configurar(new Select<>());
+        Select<E> sel = configure(new Select<>());
         sel.setLabel(label);
         sel.setItems(items);
         return sel;
@@ -270,30 +246,28 @@ public abstract class Form<T> extends Div {
         return bind(radioGroup(label, items), property);
     }
 
-    /* ===================== Helpers utilitários ===================== */
+    /* ===================== Utility helpers ===================== */
 
-    /** Marca o campo como obrigatório (apenas visual) e o retorna. */
     protected <C extends HasValue<?, ?>> C required(C field) {
         field.setRequiredIndicatorVisible(true);
         return field;
     }
 
-    /** Aplica uma configuração extra ao campo recém-criado, de forma fluente. */
     protected <C extends Component> C with(C field, Consumer<C> config) {
         config.accept(field);
         return field;
     }
 
-    private <C extends Component> C configurar(C field) {
+    private <C extends Component> C configure(C field) {
         if (field instanceof com.vaadin.flow.component.HasSize hasSize) {
             hasSize.setWidthFull();
         }
         return field;
     }
 
-    /* ===================== Helpers de layout ===================== */
+    /* ===================== Layout helpers ===================== */
 
-    /** FormLayout responsivo (1 coluna no estreito, 2 a partir de 480px). */
+    /** Responsive FormLayout (1 column when narrow, 2 from 480px). */
     protected FormLayout formLayout(Component... fields) {
         FormLayout form = new FormLayout(fields);
         form.setResponsiveSteps(
@@ -302,16 +276,16 @@ public abstract class Form<T> extends Div {
         return form;
     }
 
-    /** FormLayout com número fixo de colunas a partir de 480px. */
-    protected FormLayout formLayout(int colunas, Component... fields) {
+    /** FormLayout with a fixed number of columns from 480px. */
+    protected FormLayout formLayout(int columns, Component... fields) {
         FormLayout form = new FormLayout(fields);
         form.setResponsiveSteps(
                 new FormLayout.ResponsiveStep("0", 1),
-                new FormLayout.ResponsiveStep("480px", colunas));
+                new FormLayout.ResponsiveStep("480px", columns));
         return form;
     }
 
-    /** Cria um {@link TabSheet} já com largura total para abas do formulário. */
+    /** Creates a full-width {@link TabSheet} for form tabs. */
     protected TabSheet tabSheet() {
         TabSheet tabs = new TabSheet();
         tabs.setWidthFull();

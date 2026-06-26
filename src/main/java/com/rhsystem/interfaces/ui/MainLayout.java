@@ -11,7 +11,8 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.spring.security.AuthenticationContext;
-import com.rhsystem.interfaces.ui.usuario.UsuarioPage;
+import com.rhsystem.interfaces.ui.editor.RichTextEditorDemoPage;
+import com.rhsystem.interfaces.ui.usuario.UserPage;
 
 import jakarta.annotation.security.PermitAll;
 
@@ -35,14 +36,14 @@ public class MainLayout extends AppLayout {
         DrawerToggle toggle = new DrawerToggle();
         toggle.setAriaLabel("Menu");
 
-        Span pageTitle = new Span("Painel");
+        Span pageTitle = new Span(getTranslation("nav.dashboard"));
         pageTitle.addClassName("nav-page-title");
 
-        String username = authContext.getPrincipalName().orElse("usuário");
+        String username = authContext.getPrincipalName().orElse(getTranslation("nav.user.fallback"));
         Span user = new Span(VaadinIcon.USER.create(), new Span(" " + username));
         user.addClassName("nav-user");
 
-        Button logout = new Button("Sair", VaadinIcon.SIGN_OUT.create(), e -> authContext.logout());
+        Button logout = new Button(getTranslation("action.logout"), VaadinIcon.SIGN_OUT.create(), e -> authContext.logout());
         logout.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
 
         HorizontalLayout right = new HorizontalLayout(user, logout);
@@ -61,13 +62,13 @@ public class MainLayout extends AppLayout {
         Span brand = new Span(VaadinIcon.CUBES.create(), new Span(" RH System"));
         brand.addClassName("app-brand");
 
-        String username = authContext.getPrincipalName().orElse("usuário");
+        String username = authContext.getPrincipalName().orElse(getTranslation("nav.user.fallback"));
         com.vaadin.flow.component.avatar.Avatar avatar =
                 new com.vaadin.flow.component.avatar.Avatar(username);
         avatar.addClassName("user-avatar");
         Span nome = new Span(username);
         nome.addClassName("user-name");
-        Span papel = new Span("Administrador");
+        Span papel = new Span(getTranslation("nav.user.role.admin"));
         papel.addClassName("user-role");
         com.vaadin.flow.component.html.Div infos =
                 new com.vaadin.flow.component.html.Div(nome, papel);
@@ -76,25 +77,30 @@ public class MainLayout extends AppLayout {
                 new com.vaadin.flow.component.html.Div(avatar, infos);
         userPanel.addClassName("user-panel");
 
-        Span caption = new Span("PRINCIPAL");
+        Span caption = new Span(getTranslation("nav.section.main"));
         caption.addClassName("nav-caption");
 
         SideNav nav = new SideNav();
         nav.addClassName("app-nav");
 
         // Grupo: Recursos Humanos
-        SideNavItem rh = new SideNavItem("Recursos Humanos");
+        SideNavItem rh = new SideNavItem(getTranslation("nav.section.hr"));
         rh.setPrefixComponent(VaadinIcon.USERS.create());
-        rh.addItem(new SideNavItem("Usuários", UsuarioPage.class, VaadinIcon.USER.create()));
+        rh.addItem(new SideNavItem(getTranslation("nav.menu.users"), UserPage.class, VaadinIcon.USER.create()));
         rh.setExpanded(true);
 
-        // Grupo: Configurações (itens de exemplo, sem rota ainda)
-        SideNavItem config = new SideNavItem("Configurações");
-        config.setPrefixComponent(VaadinIcon.COG.create());
-        config.addItem(new SideNavItem("Perfis e acessos"));
-        config.addItem(new SideNavItem("Parâmetros"));
+        // Grupo: Ferramentas
+        SideNavItem tools = new SideNavItem("Ferramentas");
+        tools.setPrefixComponent(VaadinIcon.TOOLS.create());
+        tools.addItem(new SideNavItem("Editor de Texto", RichTextEditorDemoPage.class, VaadinIcon.EDIT.create()));
 
-        nav.addItem(rh, config);
+        // Grupo: Configurações (itens de exemplo, sem rota ainda)
+        SideNavItem config = new SideNavItem(getTranslation("nav.section.settings"));
+        config.setPrefixComponent(VaadinIcon.COG.create());
+        config.addItem(new SideNavItem(getTranslation("nav.menu.profiles")));
+        config.addItem(new SideNavItem(getTranslation("nav.menu.parameters")));
+
+        nav.addItem(rh, tools, config);
 
         addToDrawer(brand, userPanel, caption, nav);
     }

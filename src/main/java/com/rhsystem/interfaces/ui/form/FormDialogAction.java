@@ -70,6 +70,10 @@ public final class FormDialogAction implements Serializable {
         return tertiary("Cancelar", null).closeOnClick();
     }
 
+    public static FormDialogAction cancel(String text) {
+        return tertiary(text, null).closeOnClick();
+    }
+
     /** Constrói o botão; {@code closeAction} é fornecido pelo diálogo. */
     Button build(Runnable closeAction) {
         Button button = (icon != null) ? new Button(text, icon) : new Button(text);
