@@ -1,4 +1,4 @@
-package com.rhsystem.interfaces.ui.usuario;
+package com.rhsystem.interfaces.ui.pages.usuario;
 
 import com.rhsystem.domain.model.usuario.UserStatus;
 import com.rhsystem.domain.model.usuario.User;

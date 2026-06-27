@@ -1,4 +1,4 @@
-package com.rhsystem.interfaces.ui.auth;
+package com.rhsystem.interfaces.ui.pages.auth;
 
 import com.rhsystem.application.dto.usuario.ActivationCommand;
 import com.rhsystem.application.exception.BusinessException;

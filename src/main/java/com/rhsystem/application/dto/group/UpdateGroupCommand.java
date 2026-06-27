@@ -1,4 +1,4 @@
-package com.rhsystem.application.dto.grupo;
+package com.rhsystem.application.dto.group;
 
 import com.rhsystem.domain.model.Functionality;
 

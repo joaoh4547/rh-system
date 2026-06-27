@@ -1,14 +1,16 @@
 package com.rhsystem.infrastructure.persistence;
 
+import com.google.common.collect.Collections2;
+import com.rhsystem.domain.model.Sorting;
 import com.rhsystem.domain.model.usuario.UserStatus;
 import com.rhsystem.domain.model.usuario.User;
 import com.rhsystem.domain.repository.UserRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
+import org.springframework.util.CollectionUtils;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Adapter that implements the domain port by delegating to Spring Data.
@@ -48,11 +50,13 @@ public class UserRepositoryAdapter implements UserRepository {
     }
 
     @Override
-    public List<User> findPaginated(int offset, int limit) {
+    public List<User> findPaginated(int offset, int limit, Collection<Sorting> sorting) {
         int page = limit > 0 ? offset / limit : 0;
-        var pageable = PageRequest.of(page, limit, Sort.by("firstName").ascending());
+        Sort sort = JpaSortUtil.createSort(sorting, Sort.by("firstName").ascending());
+        var pageable = PageRequest.of(page, limit, sort);
         return jpa.findAll(pageable).getContent();
     }
+
 
     @Override
     public int count() {

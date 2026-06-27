@@ -1,4 +1,4 @@
-package com.rhsystem.interfaces.ui.usuario;
+package com.rhsystem.interfaces.ui.pages.usuario;
 
 import com.rhsystem.application.dto.usuario.DocumentUpload;
 import com.rhsystem.domain.model.usuario.UserStatus;

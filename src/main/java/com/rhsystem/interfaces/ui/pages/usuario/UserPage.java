@@ -1,10 +1,11 @@
-package com.rhsystem.interfaces.ui.usuario;
+package com.rhsystem.interfaces.ui.pages.usuario;
 
 import com.rhsystem.application.usecase.usuario.CreateUser;
 import com.rhsystem.application.usecase.usuario.GetUserSummary;
 import com.rhsystem.application.usecase.usuario.ListUsers;
 import com.rhsystem.application.usecase.usuario.RemoveUser;
 import com.rhsystem.application.usecase.usuario.UpdateUser;
+import com.rhsystem.domain.model.Sorting;
 import com.rhsystem.domain.model.usuario.User;
 import com.rhsystem.interfaces.ui.MainLayout;
 import com.rhsystem.interfaces.ui.component.StatCard;
@@ -16,10 +17,14 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.data.provider.DataProvider;
+import com.vaadin.flow.data.provider.SortDirection;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.Nullable;
 import jakarta.annotation.security.PermitAll;
+
+import java.util.Collection;
+import java.util.stream.Collectors;
 
 /**
  * User management page.
@@ -73,8 +78,14 @@ public class UserPage extends BasePage<User> {
 
     @Override
     protected DataProvider<User, Void> buildDataProvider() {
+
         return DataProvider.fromCallbacks(
-                query -> listUsers.execute(query.getOffset(), query.getLimit()),
+                query -> {
+                    Collection<Sorting> sorting = query.getSortOrders().stream()
+                            .map(sortOrder -> new Sorting(sortOrder.getSorted(), sortOrder.getDirection() == SortDirection.ASCENDING ? Sorting.Direction.ASC : Sorting.Direction.DESC))
+                            .toList();
+                    return listUsers.execute(query.getOffset(), query.getLimit(), sorting);
+                },
                 query -> Math.toIntExact(getUserSummary.execute().total())
         );
     }

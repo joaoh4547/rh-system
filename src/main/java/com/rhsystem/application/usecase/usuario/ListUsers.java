@@ -1,7 +1,10 @@
 package com.rhsystem.application.usecase.usuario;
 
+import com.rhsystem.domain.model.Sorting;
 import com.rhsystem.domain.model.usuario.User;
 import com.rhsystem.domain.repository.UserRepository;
+
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
@@ -36,7 +39,7 @@ public class ListUsers {
      * @param limit  maximum number of records
      */
     @Transactional(readOnly = true)
-    public Stream<User> execute(int offset, int limit) {
-        return userRepository.findPaginated(offset, limit).stream();
+    public Stream<User> execute(int offset, int limit, Collection<Sorting> sorting) {
+        return userRepository.findPaginated(offset, limit, sorting).stream();
     }
 }

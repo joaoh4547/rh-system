@@ -14,7 +14,7 @@ public class StatCard extends Div {
     /** Available accent colours (mapped in styles.css). */
     public enum Accent { PRIMARY, SUCCESS, WARNING, DANGER }
 
-    public StatCard(String label, long value, VaadinIcon icon, Accent accent) {
+    public StatCard(String label, Number value, VaadinIcon icon, Accent accent) {
         addClassName("stat-card");
         addClassName("accent-" + accent.name().toLowerCase());
 

@@ -19,4 +19,14 @@ public class GroupRepositoryAdapter implements GroupRepository {
         int page = limit > 0 ? offset / limit : 0;
         return jpa.findAll(PageRequest.of(page, limit)).getContent();
     }
+
+    @Override
+    public long count() {
+        return jpa.count();
+    }
+
+    @Override
+    public long countActive() {
+        return jpa.countByActiveTrue();
+    }
 }

@@ -1,7 +1,10 @@
 package com.rhsystem.domain.repository;
 
+import com.rhsystem.domain.model.Sorting;
 import com.rhsystem.domain.model.usuario.UserStatus;
 import com.rhsystem.domain.model.usuario.User;
+
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,7 +30,7 @@ public interface UserRepository {
      * @param offset start position (0-based)
      * @param limit  maximum number of records
      */
-    List<User> findPaginated(int offset, int limit);
+    List<User> findPaginated(int offset, int limit, Collection<Sorting> sorting);
 
     /** Total number of registered users. */
     int count();

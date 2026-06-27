@@ -1,4 +1,4 @@
-package com.rhsystem.interfaces.ui.usuario;
+package com.rhsystem.interfaces.ui.pages.usuario;
 
 import com.rhsystem.domain.model.usuario.UserStatus;
 import com.rhsystem.domain.model.usuario.User;
@@ -21,7 +21,7 @@ import com.vaadin.flow.data.renderer.ComponentRenderer;
 public class UserGrid extends AppGrid<User> {
 
     public UserGrid(ObjectActions<User> actions) {
-        addColumn(User::getUsername)
+        addColumn("username")
                 .setHeader(getTranslation("col.username")).setAutoWidth(true).setSortable(true);
 
         addColumn(User::getFullName)

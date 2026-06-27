@@ -1,4 +1,4 @@
-package com.rhsystem.interfaces.ui.auth;
+package com.rhsystem.interfaces.ui.pages.auth;
 
 import com.rhsystem.application.dto.login.LoginResult;
 import com.rhsystem.application.usecase.usuario.AcceptTerms;

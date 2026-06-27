@@ -1,4 +1,4 @@
-package com.rhsystem.interfaces.ui.editor;
+package com.rhsystem.interfaces.ui.pages.editor;
 
 import com.rhsystem.interfaces.ui.MainLayout;
 import com.rhsystem.interfaces.ui.component.RichTextEditor;

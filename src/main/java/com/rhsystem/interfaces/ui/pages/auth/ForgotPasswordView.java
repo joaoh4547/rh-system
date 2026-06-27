@@ -1,4 +1,4 @@
-package com.rhsystem.interfaces.ui.auth;
+package com.rhsystem.interfaces.ui.pages.auth;
 
 import com.rhsystem.application.usecase.usuario.RequestPasswordReset;
 import com.vaadin.flow.component.button.Button;

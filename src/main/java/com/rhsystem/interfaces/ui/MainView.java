@@ -1,6 +1,6 @@
 package com.rhsystem.interfaces.ui;
 
-import com.rhsystem.interfaces.ui.usuario.UserPage;
+import com.rhsystem.interfaces.ui.pages.usuario.UserPage;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;

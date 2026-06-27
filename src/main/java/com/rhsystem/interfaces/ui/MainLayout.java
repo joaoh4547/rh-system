@@ -1,5 +1,6 @@
 package com.rhsystem.interfaces.ui;
 
+import com.rhsystem.interfaces.ui.pages.groups.GroupPage;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.button.Button;
@@ -11,8 +12,8 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.spring.security.AuthenticationContext;
-import com.rhsystem.interfaces.ui.editor.RichTextEditorDemoPage;
-import com.rhsystem.interfaces.ui.usuario.UserPage;
+import com.rhsystem.interfaces.ui.pages.editor.RichTextEditorDemoPage;
+import com.rhsystem.interfaces.ui.pages.usuario.UserPage;
 
 import jakarta.annotation.security.PermitAll;
 
@@ -63,18 +64,15 @@ public class MainLayout extends AppLayout {
         brand.addClassName("app-brand");
 
         String username = authContext.getPrincipalName().orElse(getTranslation("nav.user.fallback"));
-        com.vaadin.flow.component.avatar.Avatar avatar =
-                new com.vaadin.flow.component.avatar.Avatar(username);
+        com.vaadin.flow.component.avatar.Avatar avatar = new com.vaadin.flow.component.avatar.Avatar(username);
         avatar.addClassName("user-avatar");
         Span nome = new Span(username);
         nome.addClassName("user-name");
         Span papel = new Span(getTranslation("nav.user.role.admin"));
         papel.addClassName("user-role");
-        com.vaadin.flow.component.html.Div infos =
-                new com.vaadin.flow.component.html.Div(nome, papel);
+        com.vaadin.flow.component.html.Div infos = new com.vaadin.flow.component.html.Div(nome, papel);
         infos.addClassName("user-infos");
-        com.vaadin.flow.component.html.Div userPanel =
-                new com.vaadin.flow.component.html.Div(avatar, infos);
+        com.vaadin.flow.component.html.Div userPanel = new com.vaadin.flow.component.html.Div(avatar, infos);
         userPanel.addClassName("user-panel");
 
         Span caption = new Span(getTranslation("nav.section.main"));
@@ -100,7 +98,11 @@ public class MainLayout extends AppLayout {
         config.addItem(new SideNavItem(getTranslation("nav.menu.profiles")));
         config.addItem(new SideNavItem(getTranslation("nav.menu.parameters")));
 
-        nav.addItem(rh, tools, config);
+        SideNavItem security = new SideNavItem(getTranslation("nav.section.security"));
+        security.setPrefixComponent(VaadinIcon.LOCK.create());
+        security.addItem(new SideNavItem(getTranslation("nav.menu.groups"), GroupPage.class, VaadinIcon.GROUP.create()));
+
+        nav.addItem(rh, tools, config, security);
 
         addToDrawer(brand, userPanel, caption, nav);
     }
