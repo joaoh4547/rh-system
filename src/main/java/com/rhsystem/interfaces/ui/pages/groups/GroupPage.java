@@ -22,6 +22,20 @@ import org.jspecify.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * The GroupPage class represents the user interface for managing groups in the system.
+ * It extends the BasePage class to provide CRUD functionality, a grid layout for group management,
+ * and statistics visualization. This class adds specific behaviors and translations for groups.
+ * <p>
+ * Key features include:
+ * - A configurable data grid for displaying groups.
+ * - KPI cards to display key metrics such as total groups and active groups.
+ * - Support for dynamic translations for page titles, subtitles, and labels.
+ * - Integration with the GetGroupSummary use case to display group statistics.
+ * <p>
+ * This class is secured with `@PermitAll`, meaning it is accessible to all users.
+ * The route for navigating to this page is "groups".
+ */
 @Route(value = "groups", layout = MainLayout.class)
 @PageTitle("Groups - RH System")
 @PermitAll
