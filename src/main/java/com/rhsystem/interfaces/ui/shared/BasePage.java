@@ -1,7 +1,7 @@
 package com.rhsystem.interfaces.ui.shared;
 
-import com.rhsystem.application.exception.BusinessException;
 import com.rhsystem.domain.model.Sorting;
+import com.rhsystem.domain.validation.ValidationException;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.html.Div;
@@ -160,7 +160,7 @@ public abstract class BasePage<T> extends DataEditor<T> {
 
     /**
      * Removes the record via service/repository.
-     * Throws {@link BusinessException} to signal business errors.
+     * Throws {@link ValidationException} to signal business errors.
      */
     protected abstract void remove(T item);
 
@@ -170,8 +170,8 @@ public abstract class BasePage<T> extends DataEditor<T> {
             remove(item);
             refresh();
             notifySuccess(getTranslation("notify.removed"));
-        } catch (BusinessException e) {
-            notifyError(getTranslation(e.getMessage()));
+        } catch (ValidationException e) {
+            ValidationNotifier.show(this::getTranslation, e);
         }
     }
 

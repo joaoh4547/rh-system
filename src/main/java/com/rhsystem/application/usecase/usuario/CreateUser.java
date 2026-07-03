@@ -2,9 +2,9 @@ package com.rhsystem.application.usecase.usuario;
 
 import com.rhsystem.application.dto.usuario.CreateUserCommand;
 import com.rhsystem.application.dto.usuario.DocumentUpload;
-import com.rhsystem.application.exception.BusinessException;
 import com.rhsystem.application.port.FileStorage;
 import com.rhsystem.application.port.UserNotifier;
+import com.rhsystem.application.validation.CommandValidator;
 import com.rhsystem.domain.model.usuario.ActivationToken;
 import com.rhsystem.domain.model.usuario.Document;
 import com.rhsystem.domain.model.usuario.TokenPurpose;
@@ -14,6 +14,7 @@ import com.rhsystem.domain.repository.ActivationTokenRepository;
 import com.rhsystem.domain.repository.UserRepository;
 import com.rhsystem.domain.service.CpfValidator;
 import com.rhsystem.domain.service.UsernameGenerator;
+import com.rhsystem.domain.validation.ValidationResult;
 import java.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -30,17 +31,20 @@ public class CreateUser {
     private final ActivationTokenRepository tokenRepository;
     private final UserNotifier notifier;
     private final FileStorage fileStorage;
+    private final CommandValidator commandValidator;
     private final long tokenValidityHours;
 
     public CreateUser(UserRepository userRepository,
                       ActivationTokenRepository tokenRepository,
                       UserNotifier notifier,
                       FileStorage fileStorage,
+                      CommandValidator commandValidator,
                       @Value("${rh-system.ativacao-token-validade-horas:24}") long tokenValidityHours) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.notifier = notifier;
         this.fileStorage = fileStorage;
+        this.commandValidator = commandValidator;
         this.tokenValidityHours = tokenValidityHours;
     }
 
@@ -49,19 +53,16 @@ public class CreateUser {
         String cpf = CpfValidator.digitsOnly(cmd.cpf());
         String rg = UserSupport.alphanumericOnly(cmd.rg());
 
-        UserSupport.validateRequired(cmd, cpf, rg);
-        if (!CpfValidator.isValid(cpf)) {
-            throw new BusinessException("error.cpf.invalid");
-        }
-        if (userRepository.existsByEmail(cmd.email())) {
-            throw new BusinessException("error.user.email.duplicate");
-        }
-        if (userRepository.existsByCpf(cpf)) {
-            throw new BusinessException("error.user.cpf.duplicate");
-        }
-        if (userRepository.existsByRg(rg)) {
-            throw new BusinessException("error.user.rg.duplicate");
-        }
+        // Structural rules (annotations) + business rules, all collected at once
+        ValidationResult validation = commandValidator.check(cmd);
+        validation.addIf(!UserSupport.isBlank(cmd.email())
+                        && userRepository.existsByEmail(cmd.email().trim()),
+                "email", "error.user.email.duplicate");
+        validation.addIf(CpfValidator.isValid(cpf) && userRepository.existsByCpf(cpf),
+                "cpf", "error.user.cpf.duplicate");
+        validation.addIf(!rg.isBlank() && userRepository.existsByRg(rg),
+                "rg", "error.user.rg.duplicate");
+        validation.throwIfInvalid();
 
         User user = new User();
         user.setFirstName(cmd.firstName().trim());

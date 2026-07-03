@@ -37,7 +37,7 @@ public final class UsernameGenerator {
         List<String> firstNameTokens = tokenize(firstName);
         List<String> lastNameTokens = tokenize(lastName);
 
-        String first = firstNameTokens.isEmpty() ? "" : firstNameTokens.get(0);
+        String first = firstNameTokens.isEmpty() ? "" : firstNameTokens.getFirst();
         String last;
         if (firstNameTokens.size() >= 2) {
             last = lastSignificant(firstNameTokens);
@@ -94,7 +94,7 @@ public final class UsernameGenerator {
                 return tokens.get(i);
             }
         }
-        return tokens.get(tokens.size() - 1);
+        return tokens.getLast();
     }
 
     private static String normalize(String value) {

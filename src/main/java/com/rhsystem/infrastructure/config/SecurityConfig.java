@@ -2,8 +2,11 @@ package com.rhsystem.infrastructure.config;
 
 import com.rhsystem.interfaces.ui.pages.auth.LoginView;
 import com.vaadin.flow.spring.security.VaadinSecurityConfigurer;
+import jakarta.annotation.security.PermitAll;
+import jakarta.annotation.security.RolesAllowed;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Role;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;

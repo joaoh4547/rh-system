@@ -60,3 +60,14 @@ rh-system:
   ativacao-token-validade-horas: ${ATIVACAO_TOKEN_HORAS:24}
   # Diretório onde os anexos dos usuários serão armazenados
   storage-dir: ${STORAGE_DIR:./storage/documentos}
+  # Cache distribuído (Hazelcast embedded — sincronizado entre instâncias)
+  cache:
+    # Instâncias com o mesmo cluster-name formam um cluster e compartilham o cache
+    cluster-name: ${HZ_CLUSTER_NAME:rh-system}
+    # Lista de membros (host ou host:porta, separados por vírgula) para descoberta TCP-IP.
+    # Vazio = descoberta por multicast (funciona em rede local / mesma máquina).
+    members: ${HZ_MEMBERS:}
+    # Porta base do cluster (incrementa automaticamente se ocupada)
+    port: ${HZ_PORT:5701}
+    # Validade das entradas do cache em segundos
+    ttl-seconds: ${CACHE_TTL_SECONDS:600}

@@ -2,6 +2,7 @@ package com.rhsystem.application.usecase.usuario;
 
 import com.rhsystem.application.dto.usuario.ActivationCommand;
 import com.rhsystem.application.exception.BusinessException;
+import com.rhsystem.application.validation.CommandValidator;
 import com.rhsystem.domain.model.usuario.ActivationToken;
 import com.rhsystem.domain.model.usuario.TokenPurpose;
 import com.rhsystem.domain.model.usuario.User;
@@ -19,18 +20,21 @@ public class ActivateUser {
     private final ActivationTokenRepository tokenRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CommandValidator commandValidator;
 
     public ActivateUser(ActivationTokenRepository tokenRepository,
                         UserRepository userRepository,
-                        PasswordEncoder passwordEncoder) {
+                        PasswordEncoder passwordEncoder,
+                        CommandValidator commandValidator) {
         this.tokenRepository = tokenRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.commandValidator = commandValidator;
     }
 
     @Transactional
     public void execute(ActivationCommand cmd) {
-        UserSupport.validatePassword(cmd);
+        commandValidator.validate(cmd);
         ActivationToken token = tokenRepository.findByToken(cmd.token())
                 .orElseThrow(() -> new BusinessException("error.token.activation.invalid"));
         if (token.getPurpose() != TokenPurpose.ACTIVATION || !token.isValid()) {

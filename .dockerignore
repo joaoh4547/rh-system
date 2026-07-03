@@ -1,0 +1,13 @@
+target
+node_modules
+storage
+.git
+.idea
+.junie
+.claude
+*.iml
+Dockerfile
+docker-compose.yml
+nginx.conf
+.env
+.env.example

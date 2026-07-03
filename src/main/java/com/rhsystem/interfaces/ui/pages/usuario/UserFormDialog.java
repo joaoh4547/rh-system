@@ -3,12 +3,13 @@ package com.rhsystem.interfaces.ui.pages.usuario;
 import com.rhsystem.application.dto.usuario.AddressDTO;
 import com.rhsystem.application.dto.usuario.CreateUserCommand;
 import com.rhsystem.application.dto.usuario.UpdateUserCommand;
-import com.rhsystem.application.exception.BusinessException;
 import com.rhsystem.application.usecase.usuario.CreateUser;
 import com.rhsystem.application.usecase.usuario.UpdateUser;
 import com.rhsystem.domain.model.usuario.User;
+import com.rhsystem.domain.validation.ValidationException;
 import com.rhsystem.interfaces.ui.form.FormDialog;
 import com.rhsystem.interfaces.ui.form.FormDialogAction;
+import com.rhsystem.interfaces.ui.shared.ValidationNotifier;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 
@@ -63,8 +64,8 @@ public class UserFormDialog extends FormDialog<UserFormModel> {
             }
             onSaved.run();
             close();
-        } catch (BusinessException ex) {
-            notify(ex.getMessage(), false);
+        } catch (ValidationException ex) {
+            ValidationNotifier.show(this::getTranslation, ex);
         }
     }
 

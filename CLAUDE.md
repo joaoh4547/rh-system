@@ -5,8 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Start database
-docker compose up -d
+# Start database only (local development)
+docker compose up -d postgres
 
 # Run in development
 mvnw.cmd spring-boot:run          # Windows
@@ -17,6 +17,9 @@ mvnw.cmd test
 
 # Production build (bundles Vaadin frontend)
 mvnw.cmd clean package -Pproduction
+
+# Full stack: postgres + 2 app instances (Hazelcast cluster) + nginx LB on http://localhost:8080
+docker compose up -d --build
 ```
 
 ## Architecture
@@ -63,6 +66,40 @@ PostgreSQL 17. Flyway migrations in `src/main/resources/db/migration/`, versione
 - **Activation flow**: user created with status `PENDENTE_CONFIRMACAO` → activation email sent with token → user sets password → status becomes `ATIVO`.
 - **`RegraNegocioException`** signals business rule violations; caught in UI layer to display error notifications.
 
+## Validation
+
+Hybrid mechanism — Bean Validation for structural rules + Notification Pattern for business rules, collecting **all** violations before throwing:
+
+- **Structural rules** are `jakarta.validation` annotations on command records (`application/dto`). Constraint `message` values are i18n keys (e.g. `error.cpf.invalid`), translated only at the UI layer. Custom constraints live in `application/validation`: `@CPF` (check digits via domain `CpfValidator`, blank = valid) and `@FieldsMatch` (class-level, e.g. password + confirmation).
+- **`CommandValidator`** (`application/validation`) runs the annotations and returns a `ValidationResult` — use `check(cmd)` to keep adding business rules, or `validate(cmd)` to throw immediately.
+- **`ValidationResult`** (`domain/validation`) is the notification object: `add`/`addIf`/`requiredNotBlank` accumulate `Violation`s (field + messageKey, deduplicated); `throwIfInvalid()` throws `ValidationException` carrying the full list.
+- **`BusinessException`** extends `ValidationException` (single key), so UI catches only `ValidationException`.
+- **UI**: `ValidationNotifier.show(this::getTranslation, ex)` renders every violation in one error notification.
+
+Use case pattern:
+
+```java
+ValidationResult validation = commandValidator.check(cmd);          // structural
+validation.addIf(repo.existsByEmail(email), "email", "error.user.email.duplicate"); // business
+validation.throwIfInvalid();                                        // all errors at once
+```
+
+When adding rules: new message keys go in both `i18n/messages.properties` and `messages_en.properties`; unit tests in `src/test/java/.../validation/` run without Spring or database.
+
+## Distributed Cache
+
+Hazelcast **embedded** (`CacheConfig` in `infrastructure/config`) via Spring Cache abstraction. Each instance embeds a cluster member; members with the same `HZ_CLUSTER_NAME` discover each other (TCP-IP via `HZ_MEMBERS`, or multicast when empty) and share the cache, so eviction on one instance propagates to all.
+
+- Caches: `CacheConfig.USERS` and `CacheConfig.GROUPS`, TTL `CACHE_TTL_SECONDS` (default 600s), LRU eviction.
+- `@Cacheable`/`@CacheEvict` live on the `*Adapter` classes (infrastructure), never on domain or use cases. Writes evict with `allEntries = true`.
+- Only list/count queries are cached. Point lookups (`findById`, `findByUsername`, `findByEmail`) and `exists*` are NOT cached — they must stay fresh for authentication and uniqueness validation.
+- Cached entities must implement `Serializable` (including embeddables and child entities).
+- Multiple instances still require **sticky sessions** at the load balancer (Vaadin state lives in the HTTP session; only the cache is shared).
+
+## Docker Deployment
+
+`Dockerfile` is multi-stage (JDK 26 Maven build with `-Pproduction`, then JRE runtime). `docker-compose.yml` runs the full stack: `postgres`, `app1` + `app2` (defined via the `x-app-common` YAML anchor — Hazelcast TCP-IP discovery through `HZ_MEMBERS: app1:5701,app2:5701`, shared `app_storage` volume for document uploads), and `lb` (nginx on port 8080, config in `nginx.conf`). The nginx upstream uses `ip_hash` for sticky sessions and forwards WebSocket upgrade headers for Vaadin Push. Note: with `ip_hash`, requests from one client IP always land on the same instance — to see both instances locally, test from different IPs or temporarily switch the upstream to `least_conn` (breaks session affinity).
+
 ## Environment Variables
 
 | Variable | Default |
@@ -72,3 +109,7 @@ PostgreSQL 17. Flyway migrations in `src/main/resources/db/migration/`, versione
 | `APP_BASE_URL` | `http://localhost:8080` |
 | `ATIVACAO_TOKEN_HORAS` | `24` |
 | `STORAGE_DIR` | `./storage/documentos` |
+| `HZ_CLUSTER_NAME` | `rh-system` |
+| `HZ_MEMBERS` | (empty) — comma-separated `host[:port]` list; empty = multicast discovery |
+| `HZ_PORT` | `5701` |
+| `CACHE_TTL_SECONDS` | `600` |

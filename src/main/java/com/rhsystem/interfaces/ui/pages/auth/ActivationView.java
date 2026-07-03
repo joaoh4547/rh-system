@@ -1,8 +1,9 @@
 package com.rhsystem.interfaces.ui.pages.auth;
 
 import com.rhsystem.application.dto.usuario.ActivationCommand;
-import com.rhsystem.application.exception.BusinessException;
 import com.rhsystem.application.usecase.usuario.ActivateUser;
+import com.rhsystem.domain.validation.ValidationException;
+import com.rhsystem.interfaces.ui.shared.ValidationNotifier;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
@@ -66,8 +67,8 @@ public class ActivationView extends VerticalLayout implements HasUrlParameter<St
             Notification.show(getTranslation("activation.success"), 5000,
                     Notification.Position.MIDDLE);
             activateButton.getUI().ifPresent(ui -> ui.navigate("login"));
-        } catch (BusinessException ex) {
-            Notification.show(getTranslation(ex.getMessage()), 5000, Notification.Position.MIDDLE);
+        } catch (ValidationException ex) {
+            ValidationNotifier.show(this::getTranslation, ex);
         }
     }
 }

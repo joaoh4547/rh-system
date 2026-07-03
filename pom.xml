@@ -67,6 +67,17 @@
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
+        <!-- Cache distribuído (Hazelcast embedded — sincroniza entre instâncias) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.hazelcast</groupId>
+            <artifactId>hazelcast-spring</artifactId>
+            <version>5.5.0</version>
+        </dependency>
+
         <!-- Banco de dados -->
         <dependency>
             <groupId>org.postgresql</groupId>

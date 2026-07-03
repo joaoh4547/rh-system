@@ -25,4 +25,30 @@ public class RhSystemProperties {
 
     /** Storage directory for attachments. */
     private String storageDir = "./storage/documentos";
+
+    /** Distributed cache (Hazelcast) settings. */
+    private final Cache cache = new Cache();
+
+    @Getter
+    @Setter
+    public static class Cache {
+
+        /** Hazelcast cluster name — instances with the same name form a cluster. */
+        private String clusterName = "rh-system";
+
+        /**
+         * Comma-separated list of known member addresses (host or host:port) for TCP-IP discovery.
+         * When empty, multicast discovery is used (works on a local network / same host).
+         */
+        private String members = "";
+
+        /** Base port for cluster communication (auto-increments if busy). */
+        private int port = 5701;
+
+        /** Time-to-live of cached entries, in seconds. */
+        private int ttlSeconds = 600;
+
+        /** Maximum entries per cache map, per node (LRU eviction beyond that). */
+        private int maxSize = 5000;
+    }
 }

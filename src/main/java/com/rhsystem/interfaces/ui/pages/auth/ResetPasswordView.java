@@ -1,8 +1,9 @@
 package com.rhsystem.interfaces.ui.pages.auth;
 
 import com.rhsystem.application.dto.usuario.ActivationCommand;
-import com.rhsystem.application.exception.BusinessException;
 import com.rhsystem.application.usecase.usuario.ResetPassword;
+import com.rhsystem.domain.validation.ValidationException;
+import com.rhsystem.interfaces.ui.shared.ValidationNotifier;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Div;
@@ -68,9 +69,8 @@ public class ResetPasswordView extends VerticalLayout implements HasUrlParameter
             Notification.show(getTranslation("reset.success"), 5000,
                     Notification.Position.MIDDLE).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             getUI().ifPresent(ui -> ui.navigate("login"));
-        } catch (BusinessException ex) {
-            Notification.show(getTranslation(ex.getMessage()), 5000, Notification.Position.MIDDLE)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        } catch (ValidationException ex) {
+            ValidationNotifier.show(this::getTranslation, ex);
         }
     }
 
