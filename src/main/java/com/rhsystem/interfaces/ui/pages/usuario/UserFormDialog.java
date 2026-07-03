@@ -69,8 +69,5 @@ public class UserFormDialog extends FormDialog<UserFormModel> {
         }
     }
 
-    private void notify(String key, boolean success) {
-        Notification.show(getTranslation(key)).addThemeVariants(
-                success ? NotificationVariant.LUMO_SUCCESS : NotificationVariant.LUMO_ERROR);
-    }
+
 }

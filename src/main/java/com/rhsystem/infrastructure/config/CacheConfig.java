@@ -48,7 +48,8 @@ public class CacheConfig {
 
         config.getNetworkConfig()
                 .setPort(props.getPort())
-                .setPortAutoIncrement(true);
+                .setPortAutoIncrement(true)
+                ;
 
         configureDiscovery(config.getNetworkConfig().getJoin(), props.getMembers());
 

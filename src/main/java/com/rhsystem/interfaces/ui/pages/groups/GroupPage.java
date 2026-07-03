@@ -1,5 +1,6 @@
 package com.rhsystem.interfaces.ui.pages.groups;
 
+import com.rhsystem.application.usecase.group.CreateGroup;
 import com.rhsystem.application.usecase.group.GetGroupSummary;
 import com.rhsystem.application.usecase.group.ListGroups;
 import com.rhsystem.domain.model.Sorting;
@@ -49,6 +50,7 @@ public class GroupPage extends BasePage<Group> {
 
     private final GetGroupSummary getGroupSummary;
     private final ListGroups listGroups;
+    private final CreateGroup createGroup;
 
     @Override
     protected String pageTitle() {
@@ -68,7 +70,7 @@ public class GroupPage extends BasePage<Group> {
 
     @Override
     protected Dialog buildForm(@Nullable Group item) {
-        return new GroupFormDialog(item);
+        return new GroupFormDialog(item, createGroup, this::refresh);
     }
 
     @Override

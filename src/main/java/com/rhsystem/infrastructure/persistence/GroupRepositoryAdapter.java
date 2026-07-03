@@ -5,6 +5,7 @@ import com.rhsystem.domain.model.grupo.Group;
 import com.rhsystem.domain.repository.GroupRepository;
 import com.rhsystem.infrastructure.config.CacheConfig;
 import lombok.AllArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -43,5 +44,11 @@ public class GroupRepositoryAdapter implements GroupRepository {
     @Cacheable(cacheNames = CacheConfig.GROUPS, key = "'countActive'")
     public long countActive() {
         return jpa.countByActiveTrue();
+    }
+
+    @Override
+    @CacheEvict(cacheNames = CacheConfig.GROUPS, allEntries = true)
+    public Group save(Group group) {
+        return jpa.save(group);
     }
 }

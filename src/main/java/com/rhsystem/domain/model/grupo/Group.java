@@ -2,10 +2,7 @@ package com.rhsystem.domain.model.grupo;
 
 import com.rhsystem.domain.model.Functionality;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -17,6 +14,7 @@ import java.util.Collection;
 @NoArgsConstructor
 @Getter
 @Setter
+@Builder
 public class Group implements Serializable {
 
     @Serial

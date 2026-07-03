@@ -4,5 +4,5 @@ import com.rhsystem.domain.model.Functionality;
 
 import java.util.Collection;
 
-public record CreateGroupCommand(String name, String description, Collection<Functionality> functionalities) {
+public record CreateGroupCommand(String name, String description,boolean active, boolean admin, Collection<Functionality> functionalities) {
 }

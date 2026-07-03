@@ -6,6 +6,8 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.shared.Tooltip;
 import lombok.Getter;
 
@@ -152,5 +154,10 @@ public class FormDialog<T> extends Dialog {
     public void open(T bean) {
         form.setBean(bean);
         open();
+    }
+
+    protected void notify(String key, boolean success) {
+        Notification.show(getTranslation(key)).addThemeVariants(
+                success ? NotificationVariant.LUMO_SUCCESS : NotificationVariant.LUMO_ERROR);
     }
 }

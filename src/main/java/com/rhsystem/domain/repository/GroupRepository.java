@@ -11,4 +11,6 @@ public interface GroupRepository {
 
     long count();
     long countActive();
+
+    Group save(Group group);
 }
