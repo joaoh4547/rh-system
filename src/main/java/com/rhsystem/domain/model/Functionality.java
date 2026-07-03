@@ -1,27 +1,26 @@
 package com.rhsystem.domain.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.util.*;
 
 @Getter
+@AllArgsConstructor
 public enum Functionality {
 
     // Usuários
-    CREATE_USER(Category.USER),
-    VIEW_USER(Category.USER),
-    DELETE_USER(Category.USER),
+    CREATE_USER(Category.USER,"create-user.functionality"),
+    VIEW_USER(Category.USER, "view-user.functionality"),
+    DELETE_USER(Category.USER, "delete-user.functionality"),
 
     // Grupos
-    CREATE_GROUP(Category.GROUP),
-    VIEW_GROUP(Category.GROUP),
-    DELETE_GROUP(Category.GROUP);
+    CREATE_GROUP(Category.GROUP, "create-group.functionality"),
+    VIEW_GROUP(Category.GROUP, "view-group.functionality"),
+    DELETE_GROUP(Category.GROUP, "delete-group.functionality");
 
     private final Category category;
-
-    Functionality(final Category category) {
-        this.category = category;
-    }
+    private final String label;
 
 
     public static Map<Category, Collection<Functionality>> getFunctionalityByCategory() {
@@ -32,9 +31,13 @@ public enum Functionality {
         return functionalityByCategory;
     }
 
+    @AllArgsConstructor
+    @Getter
     public enum Category {
-        USER,
-        GROUP
+        USER("functionality.category.USER"),
+        GROUP("functionality.category.GROUP");
+
+        private final String label;
     }
 }
 

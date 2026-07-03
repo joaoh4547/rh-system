@@ -1,15 +1,21 @@
 package com.rhsystem.interfaces.ui.shared;
 
 import com.rhsystem.application.exception.BusinessException;
+import com.rhsystem.domain.model.Sorting;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.data.provider.DataProvider;
+import com.vaadin.flow.data.provider.Query;
+import com.vaadin.flow.data.provider.SortDirection;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.Nullable;
 import jakarta.annotation.PostConstruct;
+
+import java.util.Collection;
+import java.util.stream.Stream;
 
 /**
  * Base page for CRUDs with persistence via services/use-cases.
@@ -56,7 +62,7 @@ import jakarta.annotation.PostConstruct;
 public abstract class BasePage<T> extends DataEditor<T> {
 
     private final Div statsContainer = new Div();
-    private final Div card           = new Div();
+    private final Div card = new Div();
 
     private DataProvider<T, Void> dataProvider;
 
@@ -66,17 +72,32 @@ public abstract class BasePage<T> extends DataEditor<T> {
         setSpacing(true);
     }
 
-    /** Initialised by Spring after DI of the subclass — ensures use cases are available. */
+    protected Stream<T> fetchData(Query<T, ?> query) {
+        Collection<Sorting> sorting = query.getSortOrders().stream()
+                .map(sortOrder -> new Sorting(sortOrder.getSorted(), sortOrder.getDirection() == SortDirection.ASCENDING ? Sorting.Direction.ASC : Sorting.Direction.DESC))
+                .toList();
+        return fetchResults(query.getLimit(), query.getOffset(), sorting);
+    }
+
+    protected abstract Stream<T> fetchResults(int limit, int offset, Collection<Sorting> sorting);
+
+    protected abstract int countResults();
+
+    /**
+     * Initialised by Spring after DI of the subclass — ensures use cases are available.
+     */
     @PostConstruct
     private void initialize() {
-        grid = buildGrid(buildObjectActions());
+        grid = buildGrid(creatActions());
         dataProvider = buildDataProvider();
         grid.setDataProvider(dataProvider);
         buildLayout();
         refreshKpis();
     }
 
-    /** Disables DataEditor's onAttach: BasePage uses @PostConstruct. */
+    /**
+     * Disables DataEditor's onAttach: BasePage uses @PostConstruct.
+     */
     @Override
     protected void onAttach(AttachEvent event) {
         // intentional: initialisation via @PostConstruct
@@ -95,10 +116,14 @@ public abstract class BasePage<T> extends DataEditor<T> {
     // ── Metadata ──────────────────────────────────────────────────────────────
 
     protected abstract String pageTitle();
+
     protected abstract String pageSubtitle();
 
-    @Override protected abstract String tableTitle();
-    @Override protected abstract String newButtonLabel();
+    @Override
+    protected abstract String tableTitle();
+
+    @Override
+    protected abstract String newButtonLabel();
 
     // ── DataProvider (server-side pagination) ─────────────────────────────────
 
@@ -113,7 +138,10 @@ public abstract class BasePage<T> extends DataEditor<T> {
      * );
      * }</pre>
      */
-    protected abstract DataProvider<T, Void> buildDataProvider();
+    protected final DataProvider<T, Void> buildDataProvider() {
+        return DataProvider.fromCallbacks(this::fetchData,
+                q -> countResults());
+    }
 
     // ── KPIs ──────────────────────────────────────────────────────────────────
 

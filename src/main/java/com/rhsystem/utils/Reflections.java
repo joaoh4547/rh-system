@@ -5,11 +5,11 @@ import java.lang.reflect.Type;
 
 public class Reflections {
 
-    public static <T> Class<?> getGenericType(Class<T> target, int index) {
+    public static <T> Class<T> getGenericType(Class<T> target, int index) {
         var superclass = target.getGenericSuperclass();
         if (superclass instanceof ParameterizedType parameterizedType) {
             Type type = parameterizedType.getActualTypeArguments()[index];
-            return (Class<?>) type;
+            return (Class<T>) type;
         }
         return null;
     }

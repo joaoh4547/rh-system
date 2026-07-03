@@ -1,5 +1,7 @@
 package com.rhsystem.interfaces.ui.form;
 
+import com.rhsystem.interfaces.ui.component.LucideIcon;
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.icon.Icon;
@@ -24,7 +26,7 @@ public final class FormDialogAction implements Serializable {
     private final String text;
     private final Runnable handler;
     private final List<ButtonVariant> variants = new ArrayList<>();
-    private Icon icon;
+    private Component icon;
     private boolean closeOnClick;
     private boolean closeOnlyIfNoError = false;
 
@@ -35,6 +37,11 @@ public final class FormDialogAction implements Serializable {
 
     public FormDialogAction icon(VaadinIcon icon) {
         this.icon = icon.create();
+        return this;
+    }
+
+    public FormDialogAction icon(LucideIcon icon) {
+        this.icon = icon;
         return this;
     }
 

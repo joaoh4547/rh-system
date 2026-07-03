@@ -1,7 +1,6 @@
 package com.rhsystem.interfaces.ui.component;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.vaadin.flow.component.AbstractSinglePropertyField;
 import com.vaadin.flow.component.HasLabel;
 import com.vaadin.flow.component.HasSize;
@@ -9,6 +8,7 @@ import com.vaadin.flow.component.HasValidation;
 import com.vaadin.flow.component.Tag;
 import com.vaadin.flow.component.dependency.JsModule;
 import com.vaadin.flow.component.dependency.NpmPackage;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.Arrays;
 import java.util.List;
@@ -116,7 +116,7 @@ public class RichTextEditor extends AbstractSinglePropertyField<RichTextEditor, 
     public void setVariables(List<Variable> variables) {
         try {
             getElement().setProperty("variablesJson", MAPPER.writeValueAsString(variables));
-        } catch (JsonProcessingException e) {
+        } catch (Exception e) {
             throw new RuntimeException("Failed to serialize variables", e);
         }
     }

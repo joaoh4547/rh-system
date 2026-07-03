@@ -24,15 +24,14 @@ public class UserFormDialog extends FormDialog<UserFormModel> {
     private final UserForm form;
 
     public UserFormDialog(CreateUser createUser, UpdateUser updateUser,
-                             User editing, Runnable onSaved) {
+                          User editing, Runnable onSaved) {
         super(editing == null ? "form.user.title.new" : "form.user.title.edit", new UserForm(editing != null));
         this.createUser = createUser;
         this.updateUser = updateUser;
-        this.editing    = editing;
-        this.onSaved    = onSaved;
-        this.form       = (UserForm) getForm();
+        this.editing = editing;
+        this.onSaved = onSaved;
+        this.form = (UserForm) getForm();
 
-        setHeaderTitle(getTranslation(editing == null ? "form.user.title.new" : "form.user.title.edit"));
         width("680px");
         actions(
                 FormDialogAction.cancel(getTranslation("action.cancel")),

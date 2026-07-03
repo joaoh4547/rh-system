@@ -78,7 +78,7 @@ vaadin-app-layout::part(navbar) {
 .app-navbar { padding-inline: var(--lumo-space-m); }
 .nav-page-title { font-size: 1.05rem; font-weight: 700; color: #1e293b; letter-spacing: .2px; }
 .nav-user {
-    display: inline-flex; align-items: center; gap: .35rem;
+    display: inline-flex; align-items: center;
     color: #475569; font-size: var(--lumo-font-size-s); font-weight: 600; white-space: nowrap;
 }
 .nav-user vaadin-icon { color: #94a3b8; }
@@ -106,8 +106,9 @@ vaadin-app-layout::part(drawer) {
 
 /* Painel do usuário */
 .user-panel {
-    display: flex; align-items: center; gap: .7rem;
-    padding: var(--lumo-space-m);
+    display: flex; align-items: center;
+    gap: .7rem;
+    padding: var(--lumo-space-s);
     margin: var(--lumo-space-s);
     background: rgba(255,255,255,.04);
     border: 1px solid rgba(255,255,255,.06);
@@ -266,11 +267,33 @@ vaadin-button[theme~="primary"]:hover { filter: brightness(1.05); }
 /* ====================================================================
    DIÁLOGO / TABS
    ==================================================================== */
-vaadin-dialog-overlay::part(overlay) { border-radius: var(--lumo-border-radius-l); box-shadow: var(--shadow-lg); }
-vaadin-dialog-overlay::part(header) { font-weight: 700; align-items: center; gap: .15rem; }
-vaadin-dialog-overlay::part(header-content) { flex: 1; }
 .dialog-header-button { color: var(--lumo-secondary-text-color); }
 .dialog-header-button:hover { color: var(--lumo-body-text-color); background: var(--lumo-contrast-10pct); }
+
+/* Customização global para FormDialog via theme="form-dialog" */
+vaadin-dialog-overlay[theme~="form-dialog"]::part(overlay) {
+    border-radius: var(--lumo-border-radius-l);
+    box-shadow: var(--shadow-lg);
+}
+
+vaadin-dialog-overlay[theme~="form-dialog"]::part(header) {
+    align-items: center;
+    gap: 0.15rem;
+}
+
+vaadin-dialog-overlay[theme~="form-dialog"]::part(header-content) {
+    flex: 1;
+}
+
+/* Título renderizado como Span próprio no header-content (ver FormDialog.java),
+   em vez de setHeaderTitle()/slot "title" do vaadin-dialog, cujo tamanho não é
+   controlável de fora de forma confiável. */
+.form-dialog-title {
+    font-size: var(--lumo-font-size-m);
+    font-weight: 700;
+    color: #0f172a;
+    line-height: var(--lumo-line-height-m);
+}
 
 /* Diálogo maximizado: ocupa a tela inteira ignorando o offset do arraste */
 vaadin-dialog-overlay[theme~="maximized"]::part(overlay) {

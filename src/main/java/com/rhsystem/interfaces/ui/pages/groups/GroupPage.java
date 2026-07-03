@@ -1,12 +1,14 @@
 package com.rhsystem.interfaces.ui.pages.groups;
 
 import com.rhsystem.application.usecase.group.GetGroupSummary;
+import com.rhsystem.application.usecase.group.ListGroups;
+import com.rhsystem.domain.model.Sorting;
 import com.rhsystem.domain.model.grupo.Group;
 import com.rhsystem.interfaces.ui.MainLayout;
 import com.rhsystem.interfaces.ui.component.StatCard;
 import com.rhsystem.interfaces.ui.shared.AppGrid;
 import com.rhsystem.interfaces.ui.shared.BasePage;
-import com.rhsystem.interfaces.ui.shared.ObjectActions;
+import com.rhsystem.interfaces.ui.shared.ObjectAction;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Div;
@@ -20,7 +22,9 @@ import lombok.AllArgsConstructor;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * The GroupPage class represents the user interface for managing groups in the system.
@@ -44,6 +48,7 @@ public class GroupPage extends BasePage<Group> {
 
 
     private final GetGroupSummary getGroupSummary;
+    private final ListGroups listGroups;
 
     @Override
     protected String pageTitle() {
@@ -55,14 +60,15 @@ public class GroupPage extends BasePage<Group> {
         return getTranslation("page.groups.subtitle");
     }
 
+
     @Override
-    protected AppGrid<Group> buildGrid(ObjectActions<Group> actions) {
-        return new GroupGrid(actions);
+    protected AppGrid<Group> buildGrid(Collection<ObjectAction<Group>> objectActions) {
+        return new GroupGrid(objectActions);
     }
 
     @Override
     protected Dialog buildForm(@Nullable Group item) {
-        return null;
+        return new GroupFormDialog(item);
     }
 
     @Override
@@ -76,9 +82,13 @@ public class GroupPage extends BasePage<Group> {
     }
 
     @Override
-    protected DataProvider<Group, Void> buildDataProvider() {
-        List<Group> groups = new ArrayList<>();
-        return new ListDataProvider<>(groups).withConfigurableFilter();
+    protected Stream<Group> fetchResults(int limit, int offset, Collection<Sorting> sorting) {
+        return listGroups.execute(offset, limit, sorting);
+    }
+
+    @Override
+    protected int countResults() {
+        return Math.toIntExact(getGroupSummary.execute().total());
     }
 
     @Override

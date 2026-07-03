@@ -3,6 +3,7 @@ package com.rhsystem.interfaces.ui.shared;
 import com.rhsystem.utils.Reflections;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
+import com.vaadin.flow.function.ValueProvider;
 
 import java.util.Optional;
 
@@ -45,5 +46,13 @@ public class AppGrid<T> extends Grid<T> {
             return Optional.of((Class<T>) type);
         }
         return Optional.empty();
+    }
+
+    protected Column<T> addColumn(String property, ValueProvider<T, ?> provider) {
+        return addColumn(provider).setSortProperty(property);
+    }
+
+    public Column<T> booleanColumn(String property, ValueProvider<T, Boolean> provider) {
+        return addColumn(property, x -> provider.apply(x) ? "Sim" : "Não");
     }
 }

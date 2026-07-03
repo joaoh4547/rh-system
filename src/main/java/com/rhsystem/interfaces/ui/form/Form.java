@@ -1,5 +1,6 @@
 package com.rhsystem.interfaces.ui.form;
 
+import com.rhsystem.utils.Reflections;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.HasValue;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -22,6 +23,7 @@ import com.vaadin.flow.component.timepicker.TimePicker;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
 import com.vaadin.flow.data.binder.Binder;
 import com.vaadin.flow.data.binder.ValidationException;
+import lombok.Getter;
 
 import java.util.Collection;
 import java.util.List;
@@ -33,6 +35,7 @@ import java.util.function.Consumer;
  *
  * @param <T> type of the bean being edited
  */
+@Getter
 public abstract class Form<T> extends Div {
 
     protected final Binder<T> binder;
@@ -43,8 +46,13 @@ public abstract class Form<T> extends Div {
         initialize();
     }
 
+
+    public Class<T> getType() {
+        return (Class<T>) Reflections.getGenericType(getClass(),0);
+    }
+
     protected Form() {
-        this.binder = new Binder<>();
+        this.binder = new BeanValidationBinder<>(getType());
         initialize();
     }
 
@@ -54,14 +62,6 @@ public abstract class Form<T> extends Div {
     }
 
     /* ===================== Binder / bean ===================== */
-
-    public Binder<T> getBinder() {
-        return binder;
-    }
-
-    public T getBean() {
-        return bean;
-    }
 
     public void setBean(T bean) {
         this.bean = bean;
@@ -108,6 +108,12 @@ public abstract class Form<T> extends Div {
 
     protected TextField requiredTextField(String label, String property, String error) {
         TextField f = textField(label);
+        f.setRequiredIndicatorVisible(true);
+        return bindRequired(f, property, error);
+    }
+
+    protected TextArea requiredTextArea(String label, String property, String error) {
+        TextArea f = configure(new TextArea(label));
         f.setRequiredIndicatorVisible(true);
         return bindRequired(f, property, error);
     }

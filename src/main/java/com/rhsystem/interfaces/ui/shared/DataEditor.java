@@ -1,5 +1,6 @@
 package com.rhsystem.interfaces.ui.shared;
 
+import com.rhsystem.interfaces.ui.component.LucideIcon;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -16,8 +17,10 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import jakarta.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * In-memory CRUD component — manages a list of items of type {@code T}
@@ -28,7 +31,7 @@ import java.util.List;
  *
  * <h3>Subclass contract</h3>
  * <ul>
- *   <li>{@link #buildGrid(ObjectActions)} — configure columns and return the {@link AppGrid}.</li>
+ *   <li>{@link #buildGrid(Collection)} — configure columns and return the {@link AppGrid}.</li>
  *   <li>{@link #buildForm(Object)} — create the edit/add {@link Dialog}.
  *       The dialog should call {@link #addItem}, {@link #replaceItem} or
  *       {@link #refresh} after saving.</li>
@@ -39,7 +42,9 @@ import java.util.List;
  */
 public abstract class DataEditor<T> extends VerticalLayout {
 
-    /** Main grid — available after the first component attach. */
+    /**
+     * Main grid — available after the first component attach.
+     */
     protected AppGrid<T> grid;
 
     private final List<T> data = new ArrayList<>();
@@ -85,17 +90,40 @@ public abstract class DataEditor<T> extends VerticalLayout {
     protected void onAttach(AttachEvent event) {
         super.onAttach(event);
         if (grid == null) {
-            grid = buildGrid(buildObjectActions());
+            grid = buildGrid(creatActions());
             buildLayout();
             syncGrid();
         }
     }
 
-    protected ObjectActions<T> buildObjectActions() {
-        return ObjectActions.<T>builder()
-                .edit(this::openForm)
-                .remove(this::confirmRemoval)
+
+    protected final Collection<ObjectAction<T>> creatActions() {
+        Collection<ObjectAction<T>> actions = new ArrayList<>();
+        actions.add(createEditAction());
+        actions.add(createDeleteAction());
+        actions.addAll(createAdditionalActions());
+        return actions;
+    }
+
+    protected ObjectAction<T> createEditAction() {
+        return ObjectAction.<T>builder()
+                .label(getTranslation("action.edit"))
+                .icon(LucideIcon::edit)
+                .handler(this::openForm)
                 .build();
+    }
+
+    protected ObjectAction<T> createDeleteAction() {
+        return ObjectAction.<T>builder()
+                .label(getTranslation("action.remove"))
+                .buttonVariant(ButtonVariant.LUMO_ERROR)
+                .icon(LucideIcon::delete)
+                .handler(this::confirmRemoval)
+                .build();
+    }
+
+    protected final Collection<ObjectAction<T>> createAdditionalActions() {
+        return new ArrayList<>();
     }
 
     protected void buildLayout() {
@@ -109,7 +137,7 @@ public abstract class DataEditor<T> extends VerticalLayout {
 
     // ── Abstract methods ──────────────────────────────────────────────────────
 
-    protected abstract AppGrid<T> buildGrid(ObjectActions<T> actions);
+    protected abstract AppGrid<T> buildGrid(Collection<ObjectAction<T>> actions);
 
     protected abstract Dialog buildForm(@Nullable T item);
 
@@ -129,16 +157,20 @@ public abstract class DataEditor<T> extends VerticalLayout {
 
     // ── Removal ───────────────────────────────────────────────────────────────
 
-    protected void confirmRemoval(T item, String displayName) {
+    protected void confirmRemoval(T item) {
         var dlg = new ConfirmDialog();
         dlg.setHeader(getTranslation("confirm.remove.header"));
-        dlg.setText(getTranslation("confirm.remove.text", displayName));
+        dlg.setText(getTranslation("confirm.remove.text", createDisplayNameExtractor().apply(item)));
         dlg.setCancelable(true);
         dlg.setCancelText(getTranslation("action.cancel"));
         dlg.setConfirmText(getTranslation("confirm.remove.button"));
         dlg.setConfirmButtonTheme("error primary");
         dlg.addConfirmListener(e -> executeRemoval(item));
         dlg.open();
+    }
+
+    protected Function<T, String> createDisplayNameExtractor() {
+        return Object::toString;
     }
 
     protected void executeRemoval(T item) {
@@ -195,7 +227,7 @@ public abstract class DataEditor<T> extends VerticalLayout {
         var t = new Span(title);
         t.addClassName("card-title");
 
-        var btnNew = new Button(newLabel, VaadinIcon.PLUS.create(),
+        var btnNew = new Button(newLabel, LucideIcon.add(),
                 e -> openForm(null));
         btnNew.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 

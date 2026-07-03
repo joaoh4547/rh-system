@@ -44,7 +44,7 @@ public class UserForm extends Form<UserFormModel> {
         FormLayout accessData;
         if (editMode) {
             var status = comboBox(getTranslation("field.status"), "status",
-                    List.of(UserStatus.values()), UserStatus::getLabel);
+                    List.of(UserStatus.values()), s -> getTranslation(s.getLabel()));
             accessData = formLayout(email, status);
         } else {
             accessData = formLayout(email);

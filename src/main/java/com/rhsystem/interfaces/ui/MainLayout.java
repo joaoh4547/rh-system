@@ -1,10 +1,14 @@
 package com.rhsystem.interfaces.ui;
 
+import com.rhsystem.application.usecase.usuario.GetUserByUserName;
+import com.rhsystem.domain.model.usuario.User;
 import com.rhsystem.interfaces.ui.pages.groups.GroupPage;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
+import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
@@ -25,9 +29,11 @@ import jakarta.annotation.security.PermitAll;
 public class MainLayout extends AppLayout {
 
     private final AuthenticationContext authContext;
+    private final GetUserByUserName getUserByUserName;
 
-    public MainLayout(AuthenticationContext authContext) {
+    public MainLayout(AuthenticationContext authContext, GetUserByUserName getUserByUserName) {
         this.authContext = authContext;
+        this.getUserByUserName = getUserByUserName;
         setPrimarySection(Section.DRAWER);
         addHeaderContent();
         addDrawerContent();
@@ -64,15 +70,18 @@ public class MainLayout extends AppLayout {
         brand.addClassName("app-brand");
 
         String username = authContext.getPrincipalName().orElse(getTranslation("nav.user.fallback"));
-        com.vaadin.flow.component.avatar.Avatar avatar = new com.vaadin.flow.component.avatar.Avatar(username);
+        Avatar avatar = new Avatar(username);
+
+
+        var user = loadUser();
+
         avatar.addClassName("user-avatar");
-        Span nome = new Span(username);
+        Span nome = new Span(user.getFullName());
         nome.addClassName("user-name");
-        Span papel = new Span(getTranslation("nav.user.role.admin"));
-        papel.addClassName("user-role");
-        com.vaadin.flow.component.html.Div infos = new com.vaadin.flow.component.html.Div(nome, papel);
+
+        Div infos = new Div(nome);
         infos.addClassName("user-infos");
-        com.vaadin.flow.component.html.Div userPanel = new com.vaadin.flow.component.html.Div(avatar, infos);
+        Div userPanel = new Div(avatar, infos);
         userPanel.addClassName("user-panel");
 
         Span caption = new Span(getTranslation("nav.section.main"));
@@ -80,12 +89,6 @@ public class MainLayout extends AppLayout {
 
         SideNav nav = new SideNav();
         nav.addClassName("app-nav");
-
-        // Grupo: Recursos Humanos
-        SideNavItem rh = new SideNavItem(getTranslation("nav.section.hr"));
-        rh.setPrefixComponent(VaadinIcon.USERS.create());
-        rh.addItem(new SideNavItem(getTranslation("nav.menu.users"), UserPage.class, VaadinIcon.USER.create()));
-        rh.setExpanded(true);
 
         // Grupo: Ferramentas
         SideNavItem tools = new SideNavItem("Ferramentas");
@@ -101,9 +104,15 @@ public class MainLayout extends AppLayout {
         SideNavItem security = new SideNavItem(getTranslation("nav.section.security"));
         security.setPrefixComponent(VaadinIcon.LOCK.create());
         security.addItem(new SideNavItem(getTranslation("nav.menu.groups"), GroupPage.class, VaadinIcon.GROUP.create()));
+        security.addItem(new SideNavItem(getTranslation("nav.menu.users"), UserPage.class, VaadinIcon.USER.create()));
 
-        nav.addItem(rh, tools, config, security);
+        nav.addItem(tools, config, security);
 
         addToDrawer(brand, userPanel, caption, nav);
+    }
+
+    private User loadUser(){
+        String username = authContext.getPrincipalName().orElse(null);
+        return getUserByUserName.execute(username);
     }
 }
