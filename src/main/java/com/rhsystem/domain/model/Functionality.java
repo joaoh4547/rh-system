@@ -22,6 +22,10 @@ public enum Functionality {
     private final Category category;
     private final String label;
 
+    public String asRole(){
+        return String.format("ROLE_%s", name());
+    }
+
 
     public static Map<Category, Collection<Functionality>> getFunctionalityByCategory() {
         Map<Category, Collection<Functionality>> functionalityByCategory = new LinkedHashMap<>();

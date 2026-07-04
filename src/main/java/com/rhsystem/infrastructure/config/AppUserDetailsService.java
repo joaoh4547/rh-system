@@ -1,15 +1,15 @@
 package com.rhsystem.infrastructure.config;
 
-import com.rhsystem.domain.model.usuario.UserStatus;
 import com.rhsystem.domain.model.usuario.User;
+import com.rhsystem.domain.model.usuario.UserStatus;
 import com.rhsystem.infrastructure.persistence.JpaUserRepository;
-import java.util.List;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+
+import java.util.Collection;
 
 /**
  * Loads the user for authentication from the username.
@@ -35,7 +35,11 @@ public class AppUserDetailsService implements UserDetailsService {
                 .password(user.getPassword() == null ? "" : user.getPassword())
                 .disabled(!active)
                 .accountLocked(user.getStatus() == UserStatus.BLOCKED)
-                .authorities(List.of(new SimpleGrantedAuthority("ROLE_USER")))
+                .authorities(makeAuthorities(user))
                 .build();
+    }
+
+    private Collection<SimpleGrantedAuthority> makeAuthorities(User user) {
+        return user.getUserFunctionalities().stream().map(f -> new SimpleGrantedAuthority(f.asRole())).toList();
     }
 }
