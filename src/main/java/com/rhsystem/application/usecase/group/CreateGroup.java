@@ -16,10 +16,10 @@ public class CreateGroup {
     private final GroupRepository repository;
 
     @Transactional
-    public void execute(CreateGroupCommand cmd) {
+    public Group execute(CreateGroupCommand cmd) {
         var validation = validator.check(cmd);
         validation.throwIfInvalid();
-        repository.save(transform(cmd));
+        return repository.save(transform(cmd));
     }
 
     private Group transform(CreateGroupCommand cmd){

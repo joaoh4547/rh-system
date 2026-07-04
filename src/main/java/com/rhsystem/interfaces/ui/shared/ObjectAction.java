@@ -25,10 +25,10 @@ public class ObjectAction<T> {
     private Collection<ButtonVariant> buttonVariants;
 
     @Builder.Default
-    private Boolean enabled = true;
+    private ConditionalState<T> enabled = (_) -> true;
 
     @Builder.Default
-    private Boolean visible = true;
+    private ConditionalState<T> visible = (_) -> true;
 
     private Boolean primary;
 
@@ -37,6 +37,10 @@ public class ObjectAction<T> {
     public interface ActionHandler<T> {
         void handle(T target);
 
+    }
+
+    public interface ConditionalState<T>{
+        boolean canExecute(T obj);
     }
 
 }

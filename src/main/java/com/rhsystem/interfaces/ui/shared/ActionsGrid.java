@@ -79,8 +79,8 @@ public abstract class ActionsGrid<T> extends AppGrid<T> {
             var button = new Button(a.getIcon().get(), e -> {
                 a.getHandler().handle(obj);
             });
-            button.setEnabled(a.getEnabled());
-            button.setVisible(a.getVisible());
+            button.setEnabled(a.getEnabled().canExecute(obj));
+            button.setVisible(a.getVisible().canExecute(obj));
             button.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL,
                     ButtonVariant.LUMO_ICON);
 

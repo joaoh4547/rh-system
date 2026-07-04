@@ -12,6 +12,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
+import java.util.Optional;
 
 /**
  * Adapter for the Group port. Read queries are cached in the distributed cache
@@ -50,5 +51,15 @@ public class GroupRepositoryAdapter implements GroupRepository {
     @CacheEvict(cacheNames = CacheConfig.GROUPS, allEntries = true)
     public Group save(Group group) {
         return jpa.save(group);
+    }
+
+    @Override
+    public Optional<Group> findById(Long id) {
+        return jpa.findById(id);
+    }
+
+    @Override
+    public Optional<Group> findByIdWithFunctionalities(Long id) {
+        return jpa.findWithFunctionalitiesById(id);
     }
 }

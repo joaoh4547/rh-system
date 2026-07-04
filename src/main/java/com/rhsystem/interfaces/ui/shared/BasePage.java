@@ -72,6 +72,8 @@ public abstract class BasePage<T> extends DataEditor<T> {
         setSpacing(true);
     }
 
+    protected abstract String getEntityArticle();
+
     protected Stream<T> fetchData(Query<T, ?> query) {
         Collection<Sorting> sorting = query.getSortOrders().stream()
                 .map(sortOrder -> new Sorting(sortOrder.getSorted(), sortOrder.getDirection() == SortDirection.ASCENDING ? Sorting.Direction.ASC : Sorting.Direction.DESC))

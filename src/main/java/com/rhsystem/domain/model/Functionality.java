@@ -17,7 +17,8 @@ public enum Functionality {
     // Grupos
     CREATE_GROUP(Category.GROUP, "create-group.functionality"),
     VIEW_GROUP(Category.GROUP, "view-group.functionality"),
-    DELETE_GROUP(Category.GROUP, "delete-group.functionality");
+    DELETE_GROUP(Category.GROUP, "delete-group.functionality"),
+    ENABLE_DISABLE_GROUP(Category.GROUP, "enable-disable-group.functionality");
 
     private final Category category;
     private final String label;

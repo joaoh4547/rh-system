@@ -69,4 +69,12 @@ public class LucideIcon extends Component implements HasStyle, HasSize {
     public static LucideIcon check(){
         return new LucideIcon("Check");
     }
+
+    public static LucideIcon lock(){
+        return new LucideIcon("Lock");
+    }
+
+    public static LucideIcon unLock(){
+        return new LucideIcon("LockOpen");
+    }
 }

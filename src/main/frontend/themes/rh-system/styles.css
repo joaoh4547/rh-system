@@ -346,3 +346,6 @@ html, body { overflow-x: hidden; }
    ==================================================================== */
 vaadin-side-nav-item { color: var(--app-sidebar-fg-strong); }
 
+vaadin-grid::part(inactive-row) {
+    color: gray;
+}

@@ -113,4 +113,9 @@ public class UserPage extends BasePage<User> {
     protected void remove(User user) {
         removeUser.execute(user.getId());
     }
+
+    @Override
+    protected String getEntityArticle() {
+        return getTranslation("masc.article");
+    }
 }

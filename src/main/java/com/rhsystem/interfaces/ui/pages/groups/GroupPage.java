@@ -1,21 +1,23 @@
 package com.rhsystem.interfaces.ui.pages.groups;
 
 import com.rhsystem.application.usecase.group.CreateGroup;
+import com.rhsystem.application.usecase.group.GetGroup;
 import com.rhsystem.application.usecase.group.GetGroupSummary;
 import com.rhsystem.application.usecase.group.ListGroups;
+import com.rhsystem.application.usecase.group.UpdateGroup;
 import com.rhsystem.domain.model.Sorting;
 import com.rhsystem.domain.model.grupo.Group;
 import com.rhsystem.interfaces.ui.MainLayout;
+import com.rhsystem.interfaces.ui.component.LucideIcon;
 import com.rhsystem.interfaces.ui.component.StatCard;
 import com.rhsystem.interfaces.ui.shared.AppGrid;
 import com.rhsystem.interfaces.ui.shared.BasePage;
+import com.rhsystem.interfaces.ui.shared.EnableDialog;
 import com.rhsystem.interfaces.ui.shared.ObjectAction;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.data.provider.DataProvider;
-import com.vaadin.flow.data.provider.ListDataProvider;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
@@ -24,7 +26,6 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.stream.Stream;
 
 /**
@@ -51,6 +52,8 @@ public class GroupPage extends BasePage<Group> {
     private final GetGroupSummary getGroupSummary;
     private final ListGroups listGroups;
     private final CreateGroup createGroup;
+    private final UpdateGroup updateGroup;
+    private final GetGroup getGroup;
 
     @Override
     protected String pageTitle() {
@@ -70,7 +73,10 @@ public class GroupPage extends BasePage<Group> {
 
     @Override
     protected Dialog buildForm(@Nullable Group item) {
-        return new GroupFormDialog(item, createGroup, this::refresh);
+        // Grid rows come detached (Hazelcast cache / closed session), so the LAZY
+        // functionalities collection is not initialized. Reload the full aggregate.
+        Group fullItem = item != null ? getGroup.execute(item.getId()) : null;
+        return new GroupFormDialog(fullItem, createGroup, updateGroup, this::refresh);
     }
 
     @Override
@@ -97,10 +103,7 @@ public class GroupPage extends BasePage<Group> {
     protected @Nullable Component buildStats() {
         var summary = getGroupSummary.execute();
 
-        var container = new Div(
-                new StatCard(getTranslation("page.groups.kpi.total"), summary.total(), VaadinIcon.GROUP, StatCard.Accent.PRIMARY),
-                new StatCard(getTranslation("page.groups.kpi.active"), summary.active(), VaadinIcon.CHECK_CIRCLE, StatCard.Accent.SUCCESS)
-        );
+        var container = new Div(new StatCard(getTranslation("page.groups.kpi.total"), summary.total(), VaadinIcon.GROUP, StatCard.Accent.PRIMARY), new StatCard(getTranslation("page.groups.kpi.active"), summary.active(), VaadinIcon.CHECK_CIRCLE, StatCard.Accent.SUCCESS));
         container.addClassName("stats-grid");
         return container;
     }
@@ -109,4 +112,73 @@ public class GroupPage extends BasePage<Group> {
     protected void remove(Group item) {
 
     }
+
+
+    @Override
+    public boolean canEdit(Group obj) {
+        return obj.isActive();
+    }
+
+    @Override
+    public boolean canDelete(Group obj) {
+        return true;
+    }
+
+    @Override
+    protected Collection<ObjectAction<Group>> createAdditionalActions() {
+        Collection<ObjectAction<Group>> actions = new ArrayList<>();
+        actions.add(createDisableAction());
+        actions.add(createEnableAction());
+        return actions;
+    }
+
+    private ObjectAction<Group> createDisableAction() {
+        return ObjectAction.<Group>builder()
+                .label(getTranslation("action.disable"))
+//                .enabled()
+                .icon(LucideIcon::lock)
+                .handler(x ->{
+                    createEnable(false, x).open();
+                })
+//                .visible(Group::isActive)
+                .build();
+    }
+
+    public ObjectAction<Group> createEnableAction() {
+        return ObjectAction.<Group>builder()
+                .label(getTranslation("action.enable"))
+                .icon(LucideIcon::unLock)
+                .handler(x -> {
+                    createEnable(true, x).open();
+                })
+                .visible(g -> !g.isActive())
+                .build();
+    }
+
+    private void enable(Group group) {
+    }
+
+    private void disable(Group o) {
+    }
+
+    @Override
+    protected String getEntityArticle() {
+        return getTranslation("masc.article");
+    }
+
+    private EnableDialog<Group> createEnable(boolean enable, Group obj) {
+        return new EnableDialog<>(obj, (g) -> {
+            if (enable) {
+                enable(g);
+            } else {
+                disable(g);
+            }
+        }, Group::getName, "Grupo", getEntityArticle(), enable);
+    }
+
+    public void confirmEnable(Group obj) {
+
+    }
+
+
 }

@@ -1,5 +1,7 @@
 package com.rhsystem.domain.validation;
 
+import lombok.Getter;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -11,6 +13,7 @@ import java.util.stream.Collectors;
  * message keys joined by comma — for a single violation it is the key itself,
  * keeping compatibility with {@code getTranslation(ex.getMessage())}.
  */
+@Getter
 public class ValidationException extends RuntimeException {
 
     private final transient List<Violation> violations;
@@ -24,7 +27,4 @@ public class ValidationException extends RuntimeException {
         this(List.of(Violation.of(messageKey)));
     }
 
-    public List<Violation> getViolations() {
-        return violations;
-    }
 }

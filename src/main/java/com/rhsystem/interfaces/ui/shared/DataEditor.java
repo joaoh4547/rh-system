@@ -98,10 +98,9 @@ public abstract class DataEditor<T> extends VerticalLayout {
 
 
     protected final Collection<ObjectAction<T>> creatActions() {
-        Collection<ObjectAction<T>> actions = new ArrayList<>();
+        Collection<ObjectAction<T>> actions = new ArrayList<>(createAdditionalActions());
         actions.add(createEditAction());
         actions.add(createDeleteAction());
-        actions.addAll(createAdditionalActions());
         return actions;
     }
 
@@ -110,8 +109,18 @@ public abstract class DataEditor<T> extends VerticalLayout {
                 .label(getTranslation("action.edit"))
                 .icon(LucideIcon::edit)
                 .handler(this::openForm)
+                .enabled(this::canEdit)
                 .build();
     }
+
+    public boolean canEdit(T obj){
+        return true;
+    }
+
+    public boolean canDelete(T obj){
+        return canEdit(obj);
+    }
+
 
     protected ObjectAction<T> createDeleteAction() {
         return ObjectAction.<T>builder()
@@ -119,10 +128,11 @@ public abstract class DataEditor<T> extends VerticalLayout {
                 .buttonVariant(ButtonVariant.LUMO_ERROR)
                 .icon(LucideIcon::delete)
                 .handler(this::confirmRemoval)
+                .enabled(this::canDelete)
                 .build();
     }
 
-    protected final Collection<ObjectAction<T>> createAdditionalActions() {
+    protected  Collection<ObjectAction<T>> createAdditionalActions() {
         return new ArrayList<>();
     }
 
