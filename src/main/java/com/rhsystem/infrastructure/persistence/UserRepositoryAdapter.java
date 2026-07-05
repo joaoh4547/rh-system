@@ -1,9 +1,8 @@
 package com.rhsystem.infrastructure.persistence;
 
-import com.google.common.collect.Collections2;
 import com.rhsystem.domain.model.Sorting;
-import com.rhsystem.domain.model.usuario.UserStatus;
 import com.rhsystem.domain.model.usuario.User;
+import com.rhsystem.domain.model.usuario.UserStatus;
 import com.rhsystem.domain.repository.UserRepository;
 import com.rhsystem.infrastructure.config.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
@@ -11,9 +10,10 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
-import org.springframework.util.CollectionUtils;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * Adapter that implements the domain port by delegating to Spring Data.

@@ -1,6 +1,5 @@
 package com.rhsystem.interfaces.ui.pages.groups;
 
-import com.google.common.collect.Sets;
 import com.rhsystem.domain.model.Functionality;
 import com.rhsystem.domain.model.grupo.Group;
 import lombok.Getter;
@@ -23,13 +22,13 @@ public class GroupFormModel {
     private Set<Functionality> functionalities = new HashSet<>();
 
 
-    public static GroupFormModel of(Group group){
+    public static GroupFormModel of(Group group) {
         GroupFormModel model = new GroupFormModel();
         model.setName(group.getName());
         model.setDescription(group.getDescription());
         model.setActive(group.isActive());
         model.setAdmin(group.isAdmin());
-        model.setFunctionalities(Sets.newHashSet(group.getFunctionalities()));
+        model.setFunctionalities(new HashSet<>(group.getFunctionalities()));
         return model;
     }
 }

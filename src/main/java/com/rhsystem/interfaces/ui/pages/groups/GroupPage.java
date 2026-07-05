@@ -1,10 +1,7 @@
 package com.rhsystem.interfaces.ui.pages.groups;
 
-import com.rhsystem.application.usecase.group.CreateGroup;
-import com.rhsystem.application.usecase.group.GetGroup;
-import com.rhsystem.application.usecase.group.GetGroupSummary;
-import com.rhsystem.application.usecase.group.ListGroups;
-import com.rhsystem.application.usecase.group.UpdateGroup;
+import com.rhsystem.application.dto.group.EnableGroupCommand;
+import com.rhsystem.application.usecase.group.*;
 import com.rhsystem.domain.model.Sorting;
 import com.rhsystem.domain.model.grupo.Group;
 import com.rhsystem.interfaces.ui.MainLayout;
@@ -54,6 +51,8 @@ public class GroupPage extends BasePage<Group> {
     private final CreateGroup createGroup;
     private final UpdateGroup updateGroup;
     private final GetGroup getGroup;
+    private final EnableGroup enableGroup;
+
 
     @Override
     protected String pageTitle() {
@@ -73,8 +72,6 @@ public class GroupPage extends BasePage<Group> {
 
     @Override
     protected Dialog buildForm(@Nullable Group item) {
-        // Grid rows come detached (Hazelcast cache / closed session), so the LAZY
-        // functionalities collection is not initialized. Reload the full aggregate.
         Group fullItem = item != null ? getGroup.execute(item.getId()) : null;
         return new GroupFormDialog(fullItem, createGroup, updateGroup, this::refresh);
     }
@@ -135,12 +132,9 @@ public class GroupPage extends BasePage<Group> {
     private ObjectAction<Group> createDisableAction() {
         return ObjectAction.<Group>builder()
                 .label(getTranslation("action.disable"))
-//                .enabled()
                 .icon(LucideIcon::lock)
-                .handler(x ->{
-                    createEnable(false, x).open();
-                })
-//                .visible(Group::isActive)
+                .handler(x -> createEnable(false, x).open())
+                .visible(Group::isActive)
                 .build();
     }
 
@@ -148,18 +142,19 @@ public class GroupPage extends BasePage<Group> {
         return ObjectAction.<Group>builder()
                 .label(getTranslation("action.enable"))
                 .icon(LucideIcon::unLock)
-                .handler(x -> {
-                    createEnable(true, x).open();
-                })
+                .handler(x -> createEnable(true, x).open())
                 .visible(g -> !g.isActive())
                 .build();
     }
 
     private void enable(Group group) {
+        enableGroup.execute(new EnableGroupCommand(group.getId(), true));
     }
 
-    private void disable(Group o) {
+    private void disable(Group group) {
+        enableGroup.execute(new EnableGroupCommand(group.getId(), false));
     }
+
 
     @Override
     protected String getEntityArticle() {
@@ -173,12 +168,10 @@ public class GroupPage extends BasePage<Group> {
             } else {
                 disable(g);
             }
+            refresh();
         }, Group::getName, "Grupo", getEntityArticle(), enable);
     }
 
-    public void confirmEnable(Group obj) {
-
-    }
 
 
 }

@@ -22,7 +22,7 @@
         <java.version>26</java.version>
         <maven.compiler.release>26</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <vaadin.version>25.0.3</vaadin.version>
+        <vaadin.version>25.2.1</vaadin.version>
     </properties>
 
     <dependencyManagement>
@@ -38,6 +38,14 @@
     </dependencyManagement>
 
     <dependencies>
+        <!--Commons-->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-collections4</artifactId>
+            <version>4.5.0</version>
+            <scope>compile</scope>
+        </dependency>
+
         <!-- Vaadin (UI) -->
         <dependency>
             <groupId>com.vaadin</groupId>
@@ -75,7 +83,7 @@
         <dependency>
             <groupId>com.hazelcast</groupId>
             <artifactId>hazelcast-spring</artifactId>
-            <version>5.5.0</version>
+            <version>5.7.0</version>
         </dependency>
 
         <!-- Banco de dados -->
@@ -99,7 +107,7 @@
         <dependency>
             <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
             <artifactId>owasp-java-html-sanitizer</artifactId>
-            <version>20220608.1</version>
+            <version>20260313.1</version>
         </dependency>
 
         <!-- Lombok -->
@@ -139,6 +147,8 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                    <!-- Acesso a APIs internas da JVM exigido pelo Hazelcast (performance + menos warnings) -->
+                    <jvmArguments>--add-modules java.se --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED --add-opens java.management/sun.management=ALL-UNNAMED --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED --enable-final-field-mutation=ALL-UNNAMED</jvmArguments>
                 </configuration>
             </plugin>
         </plugins>
