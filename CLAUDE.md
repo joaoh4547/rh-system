@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Documentation Sync (IMPORTANT)
+
+Whenever a change affects anything documented here — new/renamed classes, use cases, routes, entities, migrations, permissions, configuration, commands, deployment — update **both** `CLAUDE.md` (this file, in English, for Claude Code) and `README.md` (in Portuguese, for developers) in the same change. The two files must never drift apart: CLAUDE.md is the technical reference; README.md is its user-facing counterpart covering the same facts (stack, features, routes, env vars, migrations, how to run).
+
 ## Stack
 
 Java 26, Spring Boot 4.1.x (`spring-boot-starter-parent` 4.1.0), Vaadin 25.2.x, PostgreSQL 17, Flyway, Lombok, Hazelcast embedded (distributed cache). The Spring Boot Maven plugin passes `--add-opens`/`--add-exports` JVM arguments required by Hazelcast — keep them when touching `pom.xml`.
