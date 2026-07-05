@@ -4,8 +4,8 @@ import com.rhsystem.application.dto.usuario.DocumentUpload;
 import com.rhsystem.domain.model.grupo.Group;
 import com.rhsystem.domain.model.usuario.UserStatus;
 import com.rhsystem.interfaces.ui.component.DocumentField;
+import com.rhsystem.interfaces.ui.component.Shuttle;
 import com.rhsystem.interfaces.ui.form.Form;
-import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.tabs.TabSheet;
@@ -43,8 +43,8 @@ public class UserForm extends Form<UserFormModel> {
         FormLayout personalData = formLayout(firstName, lastName, cpf, rg);
 
         EmailField email = requiredEmailField(getTranslation("field.email"), "email", getTranslation("field.email.placeholder"));
-        MultiSelectComboBox<Group> groups = multiSelectComboBox(getTranslation("field.groups"), "groups",
-                availableGroups, Group::getName);
+        Shuttle<Group> groups = shuttle(getTranslation("field.groups"), "groups", availableGroups, Group::getName);
+        groups.setCaptions(getTranslation("field.groups.available"), getTranslation("field.groups.chosen"));
         FormLayout accessData;
         if (editMode) {
             var status = comboBox(getTranslation("field.status"), "status",

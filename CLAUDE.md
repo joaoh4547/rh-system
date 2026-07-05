@@ -160,7 +160,7 @@ Seed user from V3 migration: `admin.teste` / `admin123` (already ACTIVE).
 
 ### Form stack (`interfaces/ui/form`)
 
-- **`Form<T>`** — `Div` bound via `BeanValidationBinder<T>` (bean type explicit or resolved reflectively). Provides bind helpers (`bind`, `bindRequired`) and field factories: `textField`, `requiredTextField`, `emailField`, `passwordField`, `textArea`, `integerField`, `numberField`, `bigDecimalField`, `datePicker`, `timePicker`, `comboBox`, `multiSelectComboBox`, checkbox, etc., each with an optional `(label, property)` overload that auto-binds. Write with `writeBeanIfValid(target)` / `ifValid(target)`.
+- **`Form<T>`** — `Div` bound via `BeanValidationBinder<T>` (bean type explicit or resolved reflectively). Provides bind helpers (`bind`, `bindRequired`) and field factories: `textField`, `requiredTextField`, `emailField`, `passwordField`, `textArea`, `integerField`, `numberField`, `bigDecimalField`, `datePicker`, `timePicker`, `comboBox`, `multiSelectComboBox`, `shuttle` (see `Shuttle<T>` component), checkbox, etc., each with an optional `(label, property)` overload that auto-binds. Write with `writeBeanIfValid(target)` / `ifValid(target)`.
 - **`FormDialog<T>`** — `Dialog` wrapper: translated title, draggable/resizable, maximize/restore button, `width("680px")`, footer actions via `actions(FormDialogAction...)`, `open(bean)` (setBean + open), `notify(key, success)`.
 - **`FormDialogAction`** — footer button builder; factories `FormDialogAction.cancel(text)` and `FormDialogAction.primary(text, handler)`.
 
@@ -168,13 +168,14 @@ Seed user from V3 migration: `admin.teste` / `admin123` (already ACTIVE).
 
 Each entity has in `interfaces/ui/pages/<entity>/`: `<Entity>Page` (extends `BasePage`), `<Entity>Grid` (extends `ActionsGrid`), `<Entity>Form` (extends `Form<Model>`), `<Entity>FormDialog` (extends `FormDialog<Model>`), `<Entity>FormModel` (mutable UI bean with a `from(entity)` factory). The dialog's save flow: `writeBeanIfValid(model)` → convert model to command record → call create/update use case → `notify` + `onSaved.run()` + `close()`, catching `ValidationException` with `ValidationNotifier`. The FormModel isolates the UI from both entity and commands — follow this for new entities.
 
-Entity-specific notes: `UserForm` collects document uploads exposed as `getAttachments()` (`List<DocumentUpload>`, used only on create) and binds a `MultiSelectComboBox<Group>` (property `groups` on `UserFormModel`, items from `ListGroups.execute()`) in the access tab, letting a user's groups be assigned directly on create/edit; `UserFormDialog` converts the selection to `groupIds` when building the command. `GroupForm` uses tabs, with one `CheckboxGroup<Functionality>` per `Functionality.Category` synced manually to the model (they can't bind directly to a single property). `GroupPage` restricts editing to active groups (`canEdit`) and adds enable/disable actions with `EnableDialog`.
+Entity-specific notes: `UserForm` collects document uploads exposed as `getAttachments()` (`List<DocumentUpload>`, used only on create) and binds a `Shuttle<Group>` (property `groups` on `UserFormModel`, items from `ListGroups.execute()`) in the access tab, letting a user's groups be assigned directly on create/edit via drag-free move buttons; `UserFormDialog` converts the selection to `groupIds` when building the command. `GroupForm` uses tabs, with one `CheckboxGroup<Functionality>` per `Functionality.Category` synced manually to the model (they can't bind directly to a single property). `GroupPage` restricts editing to active groups (`canEdit`) and adds enable/disable actions with `EnableDialog`.
 
 ### Components (`interfaces/ui/component`)
 
 - **`LucideIcon`** — Lucide icon component with static factories (`edit`, `delete`, `add`, `check`, `lock`, `unLock`, `functionalities`).
 - **`StatCard(label, value, VaadinIcon, Accent)`** — KPI card; `Accent`: PRIMARY, SUCCESS, WARNING, DANGER.
 - **`DocumentField`** — masked `TextField` for `Type.CPF`/`Type.RG` with `getDigits()`/`setDigits()`.
+- **`Shuttle<T>`** — dual-list ("shuttle"/transfer list) multi-select field, `CustomField<Set<T>>` so it binds like any other field. Two `MultiSelectListBox`es (available/chosen) with `>`/`<`/`>>`/`<<` buttons moving items between them; `setItems(Collection<T>)` sets the universe, `setItemLabelGenerator`, `setCaptions(availableLabel, chosenLabel)` for the column headers. Exposed via `Form.shuttle(label, property, items, labelGenerator)`.
 - **`RichTextEditor`** + **`RichTextSanitizer`** — rich text editing; sanitizer uses OWASP java-html-sanitizer with a strict allowlist policy. Always sanitize HTML before persisting/rendering.
 
 ## Validation

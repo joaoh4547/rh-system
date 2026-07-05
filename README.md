@@ -77,7 +77,7 @@ Cada operação é uma classe `@Service` com um único método `execute(...)`:
 
 Campos: nome, sobrenome, username, email, senha, status, CPF, RG, endereço (logradouro, bairro, número, complemento, CEP), documentos anexados e **grupos vinculados**.
 
-- **Vínculo com grupos**: o formulário de usuário tem um campo de seleção múltipla (`MultiSelectComboBox`) para associar o usuário a um ou mais grupos, tanto na criação quanto na edição; a lista completa de grupos vem de `ListGroups.execute()`.
+- **Vínculo com grupos**: o formulário de usuário tem um seletor duplo estilo "shuttle" (`Shuttle<Group>`, duas listas com botões para mover itens entre "Disponíveis" e "Selecionados") para associar o usuário a um ou mais grupos, tanto na criação quanto na edição; a lista completa de grupos vem de `ListGroups.execute()`.
 
 - **Username automático**: `nome.sobrenome` (minúsculo, sem acentos, conectivos como "de"/"da"/"dos" são ignorados); se já existir recebe sufixo numérico (`joao.henrique`, `joao.henrique.2`, ...). Imutável após criação.
 - **CPF validado** pelos dígitos verificadores e armazenado só com dígitos (11 chars); CPF e RG têm **máscara automática** na tela (`DocumentField`).
@@ -239,7 +239,7 @@ Base de CRUD reutilizável em `interfaces/ui/shared`:
 
 Infra de formulários em `interfaces/ui/form`: **`Form<T>`** (binder + fábricas de campos), **`FormDialog<T>`** (diálogo arrastável/redimensionável com maximizar) e **`FormDialogAction`** (botões do rodapé). Cada entidade segue o conjunto `Page` / `Grid` / `Form` / `FormDialog` / `FormModel` em `interfaces/ui/pages/<entidade>/`.
 
-Componentes reutilizáveis (`interfaces/ui/component`): `LucideIcon` (ícones Lucide), `StatCard` (KPI), `DocumentField` (campo com máscara de CPF/RG), `RichTextEditor` com `RichTextSanitizer` (sanitização OWASP do HTML).
+Componentes reutilizáveis (`interfaces/ui/component`): `LucideIcon` (ícones Lucide), `StatCard` (KPI), `DocumentField` (campo com máscara de CPF/RG), `Shuttle<T>` (seletor duplo "shuttle", `CustomField<Set<T>>` com duas listas e botões de mover, exposto via `Form.shuttle(...)`), `RichTextEditor` com `RichTextSanitizer` (sanitização OWASP do HTML).
 
 ## Testes
 
