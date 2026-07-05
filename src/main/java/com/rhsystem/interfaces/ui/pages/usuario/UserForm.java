@@ -10,8 +10,8 @@ import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.upload.Upload;
+import com.vaadin.flow.server.streams.UploadHandler;
 
-import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -71,19 +71,10 @@ public class UserForm extends Form<UserFormModel> {
     }
 
     private void configureUpload() {
-        ByteArrayOutputStream[] currentStream = {null};
-
-        upload.setReceiver((fileName, mimeType) -> {
-            fileMimeTypes.put(fileName, mimeType);
-            currentStream[0] = new ByteArrayOutputStream();
-            return currentStream[0];
-        });
-
-        upload.addSucceededListener(e -> {
-            if (currentStream[0] != null) {
-                fileContents.put(e.getFileName(), currentStream[0].toByteArray());
-            }
-        });
+        upload.setUploadHandler(UploadHandler.inMemory((metadata, data) -> {
+            fileMimeTypes.put(metadata.fileName(), metadata.contentType());
+            fileContents.put(metadata.fileName(), data);
+        }));
     }
 
     /** CPF/RG use masked fields; the binder stores only digits in the model. */
