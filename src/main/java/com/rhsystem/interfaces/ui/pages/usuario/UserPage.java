@@ -1,5 +1,6 @@
 package com.rhsystem.interfaces.ui.pages.usuario;
 
+import com.rhsystem.application.usecase.group.ListGroups;
 import com.rhsystem.application.usecase.usuario.*;
 import com.rhsystem.domain.model.Sorting;
 import com.rhsystem.domain.model.usuario.User;
@@ -41,17 +42,20 @@ public class UserPage extends BasePage<User> {
     private final UpdateUser updateUser;
     private final RemoveUser removeUser;
     private final GetUserSummary getUserSummary;
+    private final ListGroups listGroups;
 
     public UserPage(ListUsers listUsers,
                     CreateUser createUser,
                     UpdateUser updateUser,
                     RemoveUser removeUser,
-                    GetUserSummary getUserSummary) {
+                    GetUserSummary getUserSummary,
+                    ListGroups listGroups) {
         this.listUsers = listUsers;
         this.createUser = createUser;
         this.updateUser = updateUser;
         this.removeUser = removeUser;
         this.getUserSummary = getUserSummary;
+        this.listGroups = listGroups;
     }
 
     @Override
@@ -106,7 +110,7 @@ public class UserPage extends BasePage<User> {
 
     @Override
     protected Dialog buildForm(@Nullable User user) {
-        return new UserFormDialog(createUser, updateUser, user, this::refresh);
+        return new UserFormDialog(createUser, updateUser, user, listGroups.execute(), this::refresh);
     }
 
     @Override

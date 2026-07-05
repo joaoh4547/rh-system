@@ -75,7 +75,9 @@ Cada operação é uma classe `@Service` com um único método `execute(...)`:
 
 ### Usuários
 
-Campos: nome, sobrenome, username, email, senha, status, CPF, RG, endereço (logradouro, bairro, número, complemento, CEP) e documentos anexados.
+Campos: nome, sobrenome, username, email, senha, status, CPF, RG, endereço (logradouro, bairro, número, complemento, CEP), documentos anexados e **grupos vinculados**.
+
+- **Vínculo com grupos**: o formulário de usuário tem um campo de seleção múltipla (`MultiSelectComboBox`) para associar o usuário a um ou mais grupos, tanto na criação quanto na edição; a lista completa de grupos vem de `ListGroups.execute()`.
 
 - **Username automático**: `nome.sobrenome` (minúsculo, sem acentos, conectivos como "de"/"da"/"dos" são ignorados); se já existir recebe sufixo numérico (`joao.henrique`, `joao.henrique.2`, ...). Imutável após criação.
 - **CPF validado** pelos dígitos verificadores e armazenado só com dígitos (11 chars); CPF e RG têm **máscara automática** na tela (`DocumentField`).

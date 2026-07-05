@@ -1,9 +1,11 @@
 package com.rhsystem.interfaces.ui.pages.usuario;
 
 import com.rhsystem.application.dto.usuario.DocumentUpload;
+import com.rhsystem.domain.model.grupo.Group;
 import com.rhsystem.domain.model.usuario.UserStatus;
 import com.rhsystem.interfaces.ui.component.DocumentField;
 import com.rhsystem.interfaces.ui.form.Form;
+import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.tabs.TabSheet;
@@ -28,7 +30,7 @@ public class UserForm extends Form<UserFormModel> {
     private final Map<String, String> fileMimeTypes = new LinkedHashMap<>();
     private final Upload upload = new Upload();
 
-    public UserForm(boolean editMode) {
+    public UserForm(boolean editMode, List<Group> availableGroups) {
         super(UserFormModel.class);
 
         cpf = new DocumentField(getTranslation("field.cpf"), DocumentField.Type.CPF);
@@ -41,6 +43,8 @@ public class UserForm extends Form<UserFormModel> {
         FormLayout personalData = formLayout(firstName, lastName, cpf, rg);
 
         EmailField email = requiredEmailField(getTranslation("field.email"), "email", getTranslation("field.email.placeholder"));
+        MultiSelectComboBox<Group> groups = multiSelectComboBox(getTranslation("field.groups"), "groups",
+                availableGroups, Group::getName);
         FormLayout accessData;
         if (editMode) {
             var status = comboBox(getTranslation("field.status"), "status",
@@ -49,6 +53,7 @@ public class UserForm extends Form<UserFormModel> {
         } else {
             accessData = formLayout(email);
         }
+        accessData.add(groups, 2);
 
         FormLayout address = formLayout(
                 textField(getTranslation("field.street"),        "street"),

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.stream.Stream;
 
 @AllArgsConstructor
@@ -15,6 +16,12 @@ import java.util.stream.Stream;
 public class ListGroups {
 
     private GroupRepository groupRepository;
+
+    /** Returns all groups (for internal use / selection widgets). */
+    @Transactional(readOnly = true)
+    public List<Group> execute() {
+        return groupRepository.findAll();
+    }
 
     @Transactional(readOnly = true)
     public Stream<Group> execute(int offset, int limit, Collection<Sorting> sorting){

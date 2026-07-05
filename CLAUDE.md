@@ -63,7 +63,7 @@ Cached entities (`User`, `Group`, `Document`, `Address`) implement `Serializable
 ### Repository ports (`domain/repository`)
 
 - `UserRepository` — save, findById/findByEmail/findByUsername, findAll, `findPaginated(offset, limit, sorting)`, count, countByStatus, delete, existsByUsername/Email/Cpf/Rg.
-- `GroupRepository` — `findAllPaginated(limit, offset, sorting)`, count, countActive, save, findById, `findByIdWithFunctionalities` (fetches the lazy element collection via `@EntityGraph`).
+- `GroupRepository` — `findAllPaginated(limit, offset, sorting)`, `findAll`, `findAllById(ids)`, count, countActive, save, findById, `findByIdWithFunctionalities` (fetches the lazy element collection via `@EntityGraph`).
 - `ActivationTokenRepository` — save, findByToken.
 
 ### Domain services (static utilities)
@@ -81,8 +81,8 @@ Cached entities (`User`, `Group`, `Document`, `Address`) implement `Serializable
 
 | Use case | Behavior |
 |---|---|
-| `CreateUser` | Normalizes CPF (`digitsOnly`) and RG (`alphanumericOnly`), collects structural + duplicate (email/cpf/rg) violations, generates username, status `PENDING_CONFIRMATION`, stores documents via `FileStorage`, saves, creates `ActivationToken` (validity from `rh-system.ativacao-token-validade-horas`), sends activation email via `UserNotifier`. |
-| `UpdateUser` | Loads by id, duplicate checks only when the value changed, updates fields + status + address, sets `updatedAt`. Username and documents are not updated here. |
+| `CreateUser` | Normalizes CPF (`digitsOnly`) and RG (`alphanumericOnly`), collects structural + duplicate (email/cpf/rg) violations, generates username, status `PENDING_CONFIRMATION`, stores documents via `FileStorage`, resolves `groupIds` to `Group` entities via `GroupRepository.findAllById` and sets them on the user, saves, creates `ActivationToken` (validity from `rh-system.ativacao-token-validade-horas`), sends activation email via `UserNotifier`. |
+| `UpdateUser` | Loads by id, duplicate checks only when the value changed, updates fields + status + address, replaces the group membership from `groupIds` (`GroupRepository.findAllById`, empty/null clears all groups), sets `updatedAt`. Username and documents are not updated here. |
 | `ActivateUser` | Validates `ActivationCommand`, loads token, requires purpose `ACTIVATION` and `isValid()`, calls `user.activate(encodedPassword)`, marks token used. |
 | `RequestPasswordReset` | Silent no-op if email is blank or unknown (prevents user enumeration); otherwise creates `PASSWORD_RESET` token and emails the link. |
 | `ResetPassword` | Same shape as `ActivateUser` but purpose `PASSWORD_RESET`; calls `user.resetPassword(...)`. |
@@ -108,7 +108,7 @@ Groups are never deleted — they are disabled (`GroupPage.remove()` is intentio
 
 ### DTOs / commands (`application/dto`, all records)
 
-`CreateUserCommand`, `UpdateUserCommand` (adds `id` + `status`), `ActivationCommand` (token + password + confirmation, `@FieldsMatch`, shared by activation and password reset), `AddressDTO`, `DocumentUpload` (description, fileName, contentType, byte[] content), `UserSummary`, `LoginResult` enum, `CreateGroupCommand`, `UpdateGroupCommand`, `EnableGroupCommand`, `GroupSummary`. Constraint messages on commands are i18n keys.
+`CreateUserCommand`, `UpdateUserCommand` (adds `id` + `status`; both carry `groupIds` for group membership), `ActivationCommand` (token + password + confirmation, `@FieldsMatch`, shared by activation and password reset), `AddressDTO`, `DocumentUpload` (description, fileName, contentType, byte[] content), `UserSummary`, `LoginResult` enum, `CreateGroupCommand`, `UpdateGroupCommand`, `EnableGroupCommand`, `GroupSummary`. Constraint messages on commands are i18n keys.
 
 ### Output ports (`application/port`)
 
@@ -160,7 +160,7 @@ Seed user from V3 migration: `admin.teste` / `admin123` (already ACTIVE).
 
 ### Form stack (`interfaces/ui/form`)
 
-- **`Form<T>`** — `Div` bound via `BeanValidationBinder<T>` (bean type explicit or resolved reflectively). Provides bind helpers (`bind`, `bindRequired`) and field factories: `textField`, `requiredTextField`, `emailField`, `passwordField`, `textArea`, `integerField`, `numberField`, `bigDecimalField`, `datePicker`, `timePicker`, checkbox, etc., each with an optional `(label, property)` overload that auto-binds. Write with `writeBeanIfValid(target)` / `ifValid(target)`.
+- **`Form<T>`** — `Div` bound via `BeanValidationBinder<T>` (bean type explicit or resolved reflectively). Provides bind helpers (`bind`, `bindRequired`) and field factories: `textField`, `requiredTextField`, `emailField`, `passwordField`, `textArea`, `integerField`, `numberField`, `bigDecimalField`, `datePicker`, `timePicker`, `comboBox`, `multiSelectComboBox`, checkbox, etc., each with an optional `(label, property)` overload that auto-binds. Write with `writeBeanIfValid(target)` / `ifValid(target)`.
 - **`FormDialog<T>`** — `Dialog` wrapper: translated title, draggable/resizable, maximize/restore button, `width("680px")`, footer actions via `actions(FormDialogAction...)`, `open(bean)` (setBean + open), `notify(key, success)`.
 - **`FormDialogAction`** — footer button builder; factories `FormDialogAction.cancel(text)` and `FormDialogAction.primary(text, handler)`.
 
@@ -168,7 +168,7 @@ Seed user from V3 migration: `admin.teste` / `admin123` (already ACTIVE).
 
 Each entity has in `interfaces/ui/pages/<entity>/`: `<Entity>Page` (extends `BasePage`), `<Entity>Grid` (extends `ActionsGrid`), `<Entity>Form` (extends `Form<Model>`), `<Entity>FormDialog` (extends `FormDialog<Model>`), `<Entity>FormModel` (mutable UI bean with a `from(entity)` factory). The dialog's save flow: `writeBeanIfValid(model)` → convert model to command record → call create/update use case → `notify` + `onSaved.run()` + `close()`, catching `ValidationException` with `ValidationNotifier`. The FormModel isolates the UI from both entity and commands — follow this for new entities.
 
-Entity-specific notes: `UserForm` collects document uploads exposed as `getAttachments()` (`List<DocumentUpload>`, used only on create). `GroupForm` uses tabs, with one `CheckboxGroup<Functionality>` per `Functionality.Category` synced manually to the model (they can't bind directly to a single property). `GroupPage` restricts editing to active groups (`canEdit`) and adds enable/disable actions with `EnableDialog`.
+Entity-specific notes: `UserForm` collects document uploads exposed as `getAttachments()` (`List<DocumentUpload>`, used only on create) and binds a `MultiSelectComboBox<Group>` (property `groups` on `UserFormModel`, items from `ListGroups.execute()`) in the access tab, letting a user's groups be assigned directly on create/edit; `UserFormDialog` converts the selection to `groupIds` when building the command. `GroupForm` uses tabs, with one `CheckboxGroup<Functionality>` per `Functionality.Category` synced manually to the model (they can't bind directly to a single property). `GroupPage` restricts editing to active groups (`canEdit`) and adds enable/disable actions with `EnableDialog`.
 
 ### Components (`interfaces/ui/component`)
 
