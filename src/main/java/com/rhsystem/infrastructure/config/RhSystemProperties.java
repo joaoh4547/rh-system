@@ -33,6 +33,12 @@ public class RhSystemProperties {
     @Setter
     public static class Cache {
 
+        /**
+         * Enables the distributed cache (Hazelcast). When {@code false}, no Hazelcast
+         * node is started and caching annotations are no-ops (used by the test profile).
+         */
+        private boolean enabled = true;
+
         /** Hazelcast cluster name — instances with the same name form a cluster. */
         private String clusterName = "rh-system";
 

@@ -176,6 +176,7 @@ Emails enviados (sempre em pt-BR): ativação de conta (`/activate/{token}`) e r
 Hazelcast **embedded** via Spring Cache — cada instância da aplicação embute um membro do cluster; instâncias com o mesmo `HZ_CLUSTER_NAME` se descobrem e compartilham o cache (eviction em uma instância propaga para todas).
 
 - Descoberta: **TCP-IP** quando `HZ_MEMBERS` está definido (lista `host[:porta]` separada por vírgula); **multicast** quando vazio (rede local/mesma máquina). A porta base (`HZ_PORT`, padrão 5701) incrementa automaticamente se ocupada.
+- Liga/desliga: `rh-system.cache.enabled` (padrão `true`). Com `false`, nenhum nó Hazelcast é criado e as anotações de cache viram no-ops — é assim que os testes rodam.
 - Caches `users` e `groups`: TTL `CACHE_TTL_SECONDS` (padrão 600s), eviction LRU, tamanho máximo por nó 5000 entradas, 1 backup.
 - **Somente consultas de lista/contagem são cacheadas.** Buscas pontuais (`findById`, `findByUsername`, `findByEmail`) e `exists*` NÃO são — precisam estar sempre frescas para autenticação e validação de unicidade.
 - Anotações `@Cacheable`/`@CacheEvict` ficam apenas nos `*Adapter` de persistência (infraestrutura); escritas evictam com `allEntries = true`.
@@ -256,7 +257,7 @@ Camadas cobertas:
 - **Casos de uso** (Mockito, sem banco): criação/atualização/ativação de usuário, reset de senha, login, aceite de termos, consultas e todos os casos de uso de grupo (`application/usecase/**`).
 - **Persistência** (`@DataJpaTest` + H2 + Flyway): adapters `UserRepositoryAdapter`, `GroupRepositoryAdapter`, `ActivationTokenRepositoryAdapter`, paginação/ordenação (`JpaSortUtilTest`) e verificação do usuário seed.
 - **Infraestrutura/UI utilitários**: `LocalFileStorageTest` (diretório temporário), `RichTextSanitizerTest` (XSS).
-- **Smoke test**: `RhSystemApplicationTests` sobe o contexto completo (Vaadin, Security, Hazelcast) sobre o H2.
+- **Smoke test**: `RhSystemApplicationTests` sobe o contexto completo (Vaadin, Security) sobre o H2. O Hazelcast fica **desligado** nos testes (`rh-system.cache.enabled: false` no profile `test`) — nenhum nó/cluster é criado e as anotações de cache viram no-ops.
 
 ## Estrutura do projeto
 

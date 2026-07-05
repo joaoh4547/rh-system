@@ -19,6 +19,7 @@ rh-system:
   # Anexos gravados em diretório temporário durante os testes
   storage-dir: ${java.io.tmpdir}/rh-system-test-storage
   cache:
-    # Descoberta TCP-IP apontando para si mesmo: cluster de 1 nó, sem multicast
-    # (evita lentidão/flakiness de descoberta em CI)
-    members: 127.0.0.1
+    # Sem Hazelcast nos testes: nenhum nó/cluster é criado e as anotações de
+    # cache viram no-ops — evita conflito com a aplicação rodando na mesma
+    # máquina (porta 5701) e deixa os testes mais rápidos e isolados.
+    enabled: false
