@@ -38,7 +38,7 @@ public class UserFormDialog extends FormDialog<UserFormModel> {
         this.onSaved = onSaved;
         this.form = (UserForm) getForm();
 
-        width("680px");
+        width("820px");
         actions(
                 FormDialogAction.cancel(getTranslation("action.cancel")),
                 FormDialogAction.primary(getTranslation("action.save"), this::save));

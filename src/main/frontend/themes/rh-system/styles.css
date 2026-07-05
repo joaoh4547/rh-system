@@ -296,8 +296,8 @@ vaadin-button[theme~="primary"]:hover { filter: brightness(1.05); }
 .shuttle-filter { width: 100%; box-sizing: border-box; padding: .3rem .45rem .4rem; }
 .shuttle-filter::part(input-field) { background: #f8fafc; }
 
-.shuttle-list { position: relative; height: 200px; overflow: auto; }
-.shuttle-list vaadin-multi-select-list-box { padding: .2rem 0; }
+.shuttle-list { position: relative; height: 200px; overflow: auto; }    
+.shuttle-list vaadin-multi-select-list-box { padding: .2rem 0.1rem; }
 .shuttle-empty {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
