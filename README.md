@@ -244,11 +244,19 @@ Componentes reutilizáveis (`interfaces/ui/component`): `LucideIcon` (ícones Lu
 ## Testes
 
 ```bash
-./mvnw test        # requer PostgreSQL no ar (docker compose up -d postgres)
+./mvnw test        # NÃO requer PostgreSQL — os testes usam H2 em memória
 ```
 
-- Testes unitários de validação (`CommandValidatorTest`, `ValidationResultTest`) rodam sem Spring e sem banco.
-- `RhSystemApplicationTests` sobe o contexto Spring (precisa do banco).
+A suíte roda inteira contra um banco **H2 em memória** (modo de compatibilidade PostgreSQL), configurado pelo profile `test` (`src/test/resources/application-test.yml`). As migrations Flyway reais são aplicadas no H2, então o schema testado é o mesmo do banco de produção. O PostgreSQL nunca é tocado pelos testes.
+
+Camadas cobertas:
+
+- **Domínio** (sem Spring): entidades (`UserTest`, `GroupTest`, `ActivationTokenTest`, `FunctionalityTest`) e serviços (`CpfValidatorTest`, `UsernameGeneratorTest`).
+- **Validação** (sem Spring): `CommandValidatorTest`, `ValidationResultTest`.
+- **Casos de uso** (Mockito, sem banco): criação/atualização/ativação de usuário, reset de senha, login, aceite de termos, consultas e todos os casos de uso de grupo (`application/usecase/**`).
+- **Persistência** (`@DataJpaTest` + H2 + Flyway): adapters `UserRepositoryAdapter`, `GroupRepositoryAdapter`, `ActivationTokenRepositoryAdapter`, paginação/ordenação (`JpaSortUtilTest`) e verificação do usuário seed.
+- **Infraestrutura/UI utilitários**: `LocalFileStorageTest` (diretório temporário), `RichTextSanitizerTest` (XSS).
+- **Smoke test**: `RhSystemApplicationTests` sobe o contexto completo (Vaadin, Security, Hazelcast) sobre o H2.
 
 ## Estrutura do projeto
 
@@ -263,7 +271,8 @@ Componentes reutilizáveis (`interfaces/ui/component`): `LucideIcon` (ícones Lu
 │   ├── application.yml
 │   ├── db/migration/      # migrations Flyway (V1..V7 + timestamps)
 │   └── i18n/              # messages.properties (pt-BR), messages_en.properties
-├── src/test/java/         # testes unitários de validação + smoke test do contexto
+├── src/test/java/         # testes de domínio, casos de uso, persistência (H2) e smoke test
+├── src/test/resources/    # application-test.yml (H2 em memória, modo PostgreSQL)
 ├── docker-compose.yml     # postgres + app1 + app2 + nginx
 ├── Dockerfile             # build multi-stage (produção)
 └── nginx.conf             # load balancer (ip_hash + WebSocket)

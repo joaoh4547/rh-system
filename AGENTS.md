@@ -1,14 +1,14 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Junie when working with code in this repository.
 
 ## Documentation Sync (IMPORTANT)
 
-Whenever a change affects anything documented here — new/renamed classes, use cases, routes, entities, migrations, permissions, configuration, commands, deployment — update **both** `CLAUDE.md` (this file, in English, for Claude Code) and `README.md` (in Portuguese, for developers) in the same change. The two files must never drift apart: CLAUDE.md is the technical reference; README.md is its user-facing counterpart covering the same facts (stack, features, routes, env vars, migrations, how to run).
+Whenever a change affects anything documented here — new/renamed classes, use cases, routes, entities, migrations, permissions, configuration, commands, deployment — update **both** `AGENTS.md` (this file, in English, for Junie) and `README.md` (in Portuguese, for developers) in the same change. The two files must never drift apart: AGENTS.md is the technical reference; README.md is its user-facing counterpart covering the same facts (stack, features, routes, env vars, migrations, how to run).
 
 ## Stack
 
-Java 26, Spring Boot 4.1.x (`spring-boot-starter-parent` 4.1.0), Vaadin 25.2.x, PostgreSQL 17, Flyway, Lombok, Hazelcast embedded (distributed cache). The Spring Boot Maven plugin passes `--add-opens`/`--add-exports` JVM arguments required by Hazelcast — keep them when touching `pom.xml`.
+Java 26, Spring Boot 4.1.x (`spring-boot-starter-parent` 4.1.0), Vaadin 25.2.x, PostgreSQL 17, Flyway, Lombok, Hazelcast embedded (distributed cache). Tests use H2 in-memory (PostgreSQL compatibility mode) — the real database is never touched by tests. Both the Spring Boot Maven plugin and Surefire pass `--add-opens`/`--add-exports` JVM arguments required by Hazelcast — keep them when touching `pom.xml`.
 
 ## Commands
 
@@ -20,7 +20,7 @@ docker compose up -d postgres
 mvnw.cmd spring-boot:run          # Windows
 ./mvnw spring-boot:run            # Linux/macOS
 
-# Run tests (requires PostgreSQL running)
+# Run tests (no PostgreSQL needed — whole suite runs on in-memory H2, profile "test")
 mvnw.cmd test
 
 # Production build (bundles Vaadin frontend via vaadin-maven-plugin build-frontend)
@@ -207,7 +207,7 @@ When adding rules: new message keys go in both `i18n/messages.properties` and `m
 
 PostgreSQL 17. Flyway migrations in `src/main/resources/db/migration/` (`baseline-on-migrate: true`). Older files use `V{n}__{description}.sql`; **new migrations use timestamp versions** `V{yyyyMMddHHmmss}__{description}.sql` (e.g., `V20260703174848__...`). Schema is managed exclusively through Flyway (`ddl-auto: validate`, `open-in-view: false`). When adding entities, always create a new migration file.
 
-Current migrations: V1 init, V2 usuario, V3 seed admin user, V4 token purpose, V5 terms, V6 grupo, V7 rename to English/`rh_` prefix, V20260703174848 user↔group and user↔functionality tables.
+Current migrations: V1 init, V2 usuario, V3 seed admin user, V4 token purpose, V5 terms, V6 grupo, V7 rename to English/`rh_` prefix, V20260703174848 user↔group and user↔functionality tables, V20260704231443 convert Portuguese enum values to English (`ATIVO`→`ACTIVE`, token `ATIVACAO`→`ACTIVATION`; V7 renamed columns but not values — a fresh database would break JPA enum mapping without this).
 
 Tables (English columns since V7): `rh_user`, `rh_user_document`, `rh_activation_token`, `rh_group`, `rh_group_functionality`, `rh_user_group`, `rh_user_functionality`.
 
@@ -252,5 +252,13 @@ Hazelcast **embedded** (`CacheConfig` in `infrastructure/config`) via Spring Cac
 
 ## Testing
 
-- `src/test/java/.../validation/` — plain unit tests (`CommandValidatorTest`, `ValidationResultTest`), no Spring or database.
-- `RhSystemApplicationTests` — Spring context smoke test; requires PostgreSQL running (`docker compose up -d postgres`).
+All tests run against **in-memory H2** (PostgreSQL compatibility mode), never the real database. The `test` profile (`src/test/resources/application-test.yml`) points the datasource at `jdbc:h2:mem:...;MODE=PostgreSQL` and the real Flyway migrations run on it, so the schema under test is the production schema (`ddl-auto: validate` stays on). Test-only dependencies: `com.h2database:h2` and `spring-boot-starter-data-jpa-test` (Spring Boot 4 moved `@DataJpaTest` to `org.springframework.boot.data.jpa.test.autoconfigure`, `@AutoConfigureTestDatabase` to `org.springframework.boot.jdbc.test.autoconfigure`).
+
+- **Domain** (plain JUnit, no Spring): `UserTest` (permissions, activation, terms), `GroupTest` (id-based equality), `ActivationTokenTest`, `FunctionalityTest`, `CpfValidatorTest`, `UsernameGeneratorTest`.
+- **Validation** (plain JUnit): `CommandValidatorTest`, `ValidationResultTest`.
+- **Use cases** (Mockito + real `CommandValidator`, no database): one test class per write use case (`CreateUserTest`, `UpdateUserTest`, `ActivateUserTest`, `ResetPasswordTest`, `RequestPasswordResetTest`, `ValidateLoginTest`), grouped classes for queries (`UserQueryUseCasesTest`, `GroupCommandUseCasesTest`, `GroupQueryUseCasesTest`), plus `UserSupportTest`.
+- **Persistence** (`@DataJpaTest` + `@ActiveProfiles("test")` + `@AutoConfigureTestDatabase(replace = NONE)`, importing the `*Adapter` beans): `UserPersistenceTest`, `GroupPersistenceTest`, `ActivationTokenPersistenceTest` — round trips, `@EntityGraph` fetches, pagination/sorting, uniqueness checks, Flyway seed verification. Cache annotations are inert in the slice (no CacheManager), so Hazelcast does not start.
+- **Infrastructure/UI utilities**: `JpaSortUtilTest`, `LocalFileStorageTest` (`@TempDir`), `RichTextSanitizerTest` (XSS whitelist).
+- `RhSystemApplicationTests` — full-context smoke test on H2 (`@ActiveProfiles("test")`); Hazelcast starts as a single-node TCP-IP cluster (`rh-system.cache.members: 127.0.0.1`). Surefire carries the Hazelcast `--add-opens` args in its `argLine`.
+
+Conventions for new tests: unit-test new domain/application code without Spring; persistence tests join the existing slice classes (same `@Import` list keeps one shared context); tests must stay independent of the V3 seed data except where they assert it explicitly.
