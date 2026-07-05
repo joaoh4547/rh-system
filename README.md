@@ -239,7 +239,7 @@ Base de CRUD reutilizável em `interfaces/ui/shared`:
 
 Infra de formulários em `interfaces/ui/form`: **`Form<T>`** (binder + fábricas de campos), **`FormDialog<T>`** (diálogo arrastável/redimensionável com maximizar) e **`FormDialogAction`** (botões do rodapé). Cada entidade segue o conjunto `Page` / `Grid` / `Form` / `FormDialog` / `FormModel` em `interfaces/ui/pages/<entidade>/`.
 
-Componentes reutilizáveis (`interfaces/ui/component`): `LucideIcon` (ícones Lucide), `StatCard` (KPI), `DocumentField` (campo com máscara de CPF/RG), `Shuttle<T>` (seletor duplo "shuttle", `CustomField<Set<T>>` com duas listas e botões de mover, exposto via `Form.shuttle(...)`), `RichTextEditor` com `RichTextSanitizer` (sanitização OWASP do HTML).
+Componentes reutilizáveis (`interfaces/ui/component`): `LucideIcon` (ícones Lucide), `StatCard` (KPI), `DocumentField` (campo com máscara de CPF/RG), `Shuttle<T>` (seletor duplo "shuttle", `CustomField<Set<T>>` com dois painéis estilizados — cabeçalho com legenda e contador de itens, campo de filtro e aviso de lista vazia — e botões `>`/`<`/`>>`/`<<` com tooltip, habilitados conforme seleção/conteúdo; exposto via `Form.shuttle(...)`), `RichTextEditor` com `RichTextSanitizer` (sanitização OWASP do HTML).
 
 ## Testes
 

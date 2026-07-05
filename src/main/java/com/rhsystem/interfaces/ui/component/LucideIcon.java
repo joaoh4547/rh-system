@@ -77,4 +77,20 @@ public class LucideIcon extends Component implements HasStyle, HasSize {
     public static LucideIcon unLock(){
         return new LucideIcon("LockOpen");
     }
+
+    public static LucideIcon chevronRight(){
+        return new LucideIcon("ChevronRight");
+    }
+
+    public static LucideIcon chevronLeft(){
+        return new LucideIcon("ChevronLeft");
+    }
+
+    public static LucideIcon chevronsRight(){
+        return new LucideIcon("ChevronsRight");
+    }
+
+    public static LucideIcon chevronsLeft(){
+        return new LucideIcon("ChevronsLeft");
+    }
 }

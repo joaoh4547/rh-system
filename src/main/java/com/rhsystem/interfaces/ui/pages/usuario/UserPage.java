@@ -20,6 +20,7 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.Nullable;
 import jakarta.annotation.security.PermitAll;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
@@ -109,6 +110,7 @@ public class UserPage extends BasePage<User> {
     }
 
     @Override
+    @Transactional(readOnly = true)
     protected Dialog buildForm(@Nullable User user) {
         return new UserFormDialog(createUser, updateUser, user, listGroups.execute(), this::refresh);
     }
