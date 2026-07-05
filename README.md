@@ -62,7 +62,7 @@ Convenção de idioma: **identificadores de código em inglês** (classes, méto
 
 Cada operação é uma classe `@Service` com um único método `execute(...)`:
 
-- **Usuários** (`application/usecase/usuario`): `CreateUser`, `UpdateUser`, `RemoveUser`, `ListUsers`, `GetUserSummary`, `GetUserByUserName`, `ActivateUser`, `RequestPasswordReset`, `ResetPassword`, `ValidateLogin`, `AcceptTerms`.
+- **Usuários** (`application/usecase/usuario`): `CreateUser`, `UpdateUser`, `RemoveUser`, `ListUsers`, `GetUserSummary`, `GetUser` (carrega o usuário com os grupos para o formulário de edição), `GetUserByUserName`, `ActivateUser`, `RequestPasswordReset`, `ResetPassword`, `ValidateLogin`, `AcceptTerms`.
 - **Grupos** (`application/usecase/group`): `CreateGroup`, `UpdateGroup`, `EnableGroup`, `GetGroup`, `ListGroups`, `GetGroupSummary`.
 
 ### Portas de saída
@@ -77,7 +77,7 @@ Cada operação é uma classe `@Service` com um único método `execute(...)`:
 
 Campos: nome, sobrenome, username, email, senha, status, CPF, RG, endereço (logradouro, bairro, número, complemento, CEP), documentos anexados e **grupos vinculados**.
 
-- **Vínculo com grupos**: o formulário de usuário tem um seletor duplo estilo "shuttle" (`Shuttle<Group>`, duas listas com botões para mover itens entre "Disponíveis" e "Selecionados") para associar o usuário a um ou mais grupos, tanto na criação quanto na edição; a lista completa de grupos vem de `ListGroups.execute()`.
+- **Vínculo com grupos**: o formulário de usuário tem um seletor duplo estilo "shuttle" (`Shuttle<Group>`, duas listas com botões para mover itens entre "Disponíveis" e "Selecionados") para associar o usuário a um ou mais grupos, tanto na criação quanto na edição; apenas grupos **ativos** são oferecidos (`ListGroups.executeActive()`). Se o usuário tiver vínculo com um grupo inativo, ele não aparece no seletor e é removido ao salvar a edição (o `UpdateUser` substitui a associação pelos `groupIds` enviados). Na edição o usuário é recarregado com os grupos já inicializados (`GetUser`), evitando erro de lazy loading.
 
 - **Username automático**: `nome.sobrenome` (minúsculo, sem acentos, conectivos como "de"/"da"/"dos" são ignorados); se já existir recebe sufixo numérico (`joao.henrique`, `joao.henrique.2`, ...). Imutável após criação.
 - **CPF validado** pelos dígitos verificadores e armazenado só com dígitos (11 chars); CPF e RG têm **máscara automática** na tela (`DocumentField`).

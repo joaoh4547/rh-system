@@ -13,6 +13,9 @@ public interface GroupRepository {
 
     List<Group> findAll();
 
+    /** Returns only active groups — the universe offered by selection widgets. */
+    List<Group> findAllActive();
+
     List<Group> findAllById(Collection<Long> ids);
 
     long count();

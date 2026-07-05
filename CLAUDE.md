@@ -50,7 +50,7 @@ Code identifiers are in **English** (classes, methods, columns); UI texts remain
 ### Aggregates & entities
 
 - **`User`** (`rh_user`) — fields `firstName`, `lastName`, `username` (immutable, `updatable = false`), `email`, `password` (BCrypt hash), `status`, `cpf` (11 digits), `rg`, embedded `Address`, `createdAt`/`updatedAt`/`termsAcceptedAt`. Unique constraints on username, email, cpf and rg. Relations: `@OneToMany documents` (cascade ALL + orphanRemoval), `@ManyToMany groups` (join table `rh_user_group`), `@ElementCollection functionalities` (`rh_user_functionality`). Behavior methods: `activate(passwordHash)` (sets password + status ACTIVE), `resetPassword(hash)`, `acceptTerms()`/`termsAccepted()`, `addDocument(doc)`, `getFullName()`, `isAdmin()` (any group with admin flag), `getUserFunctionalities()` (see Permissions).
-- **`Group`** (`rh_group`) — `name`, `description`, `active`, `admin`, `@ElementCollection functionalities` (`rh_group_functionality`). Uses Lombok `@Builder`.
+- **`Group`** (`rh_group`) — `name`, `description`, `active`, `admin`, `@ElementCollection functionalities` (`rh_group_functionality`). Uses Lombok `@Builder`. `equals`/`hashCode` are id-based (entity identity), so instances from different sessions/caches compare equal — required by the groups `Shuttle` and `Set<Group>` form models.
 - **`ActivationToken`** (`rh_activation_token`) — UUID `token`, `@OneToOne user`, `expiresAt`, `used`, `purpose` (`TokenPurpose.ACTIVATION` or `PASSWORD_RESET`). `isValid()` = not used and not expired.
 - **`Document`** (`rh_user_document`) — user attachment metadata: `description`, `fileName`, `contentType`, `storagePath`, `size`, `uploadedAt`. Binary content lives on disk (see `FileStorage`).
 - **`Address`** — `@Embeddable` (street, neighborhood, streetNumber, complement, postalCode).
@@ -62,8 +62,8 @@ Cached entities (`User`, `Group`, `Document`, `Address`) implement `Serializable
 
 ### Repository ports (`domain/repository`)
 
-- `UserRepository` — save, findById/findByEmail/findByUsername, findAll, `findPaginated(offset, limit, sorting)`, count, countByStatus, delete, existsByUsername/Email/Cpf/Rg.
-- `GroupRepository` — `findAllPaginated(limit, offset, sorting)`, `findAll`, `findAllById(ids)`, count, countActive, save, findById, `findByIdWithFunctionalities` (fetches the lazy element collection via `@EntityGraph`).
+- `UserRepository` — save, findById/findByEmail/findByUsername, `findByIdWithGroups` (fetches the lazy `groups` via `@EntityGraph` — used by the edit form), findAll, `findPaginated(offset, limit, sorting)`, count, countByStatus, delete, existsByUsername/Email/Cpf/Rg.
+- `GroupRepository` — `findAllPaginated(limit, offset, sorting)`, `findAll`, `findAllActive` (active only, ordered by name), `findAllById(ids)`, count, countActive, save, findById, `findByIdWithFunctionalities` (fetches the lazy element collection via `@EntityGraph`).
 - `ActivationTokenRepository` — save, findByToken.
 
 ### Domain services (static utilities)
@@ -90,6 +90,7 @@ Cached entities (`User`, `Group`, `Document`, `Address`) implement `Serializable
 | `AcceptTerms` | Sets `termsAcceptedAt` for the username. |
 | `ListUsers` | `execute()` (all) and `execute(offset, limit, sorting)` (paginated stream). |
 | `GetUserSummary` | KPI record `UserSummary(total, active, pending, blocked)`. |
+| `GetUser` | Loads by id with the `groups` collection fetched (`findByIdWithGroups`) — used by `UserPage.buildForm` so the edit dialog reads memberships without `LazyInitializationException`; throws `error.user.not.found`. |
 | `GetUserByUserName` / `RemoveUser` | Lookup / delete, throwing `BusinessException("error.user.not.found")` when missing. |
 | `UserSupport` | Package-private helpers: `toAddress(dto)`, `isBlank`, `alphanumericOnly`. |
 
@@ -101,7 +102,7 @@ Cached entities (`User`, `Group`, `Document`, `Address`) implement `Serializable
 | `UpdateGroup` | Loads with `findByIdWithFunctionalities`, replaces fields and the functionalities collection (clear + addAll). |
 | `EnableGroup` | `EnableGroupCommand(groupId, enable)` toggles `active`. |
 | `GetGroup` | Loads with functionalities or throws `error.group.not.found`. |
-| `ListGroups` | Paginated stream. |
+| `ListGroups` | `execute()` (all), `execute(offset, limit, sorting)` (paginated stream) and `executeActive()` (active only — universe for selection widgets). |
 | `GetGroupSummary` | `GroupSummary(total, active)`. |
 
 Groups are never deleted — they are disabled (`GroupPage.remove()` is intentionally empty).
@@ -168,7 +169,7 @@ Seed user from V3 migration: `admin.teste` / `admin123` (already ACTIVE).
 
 Each entity has in `interfaces/ui/pages/<entity>/`: `<Entity>Page` (extends `BasePage`), `<Entity>Grid` (extends `ActionsGrid`), `<Entity>Form` (extends `Form<Model>`), `<Entity>FormDialog` (extends `FormDialog<Model>`), `<Entity>FormModel` (mutable UI bean with a `from(entity)` factory). The dialog's save flow: `writeBeanIfValid(model)` → convert model to command record → call create/update use case → `notify` + `onSaved.run()` + `close()`, catching `ValidationException` with `ValidationNotifier`. The FormModel isolates the UI from both entity and commands — follow this for new entities.
 
-Entity-specific notes: `UserForm` collects document uploads exposed as `getAttachments()` (`List<DocumentUpload>`, used only on create) and binds a `Shuttle<Group>` (property `groups` on `UserFormModel`, items from `ListGroups.execute()`) in the access tab, letting a user's groups be assigned directly on create/edit via drag-free move buttons; `UserFormDialog` converts the selection to `groupIds` when building the command. `GroupForm` uses tabs, with one `CheckboxGroup<Functionality>` per `Functionality.Category` synced manually to the model (they can't bind directly to a single property). `GroupPage` restricts editing to active groups (`canEdit`) and adds enable/disable actions with `EnableDialog`.
+Entity-specific notes: `UserForm` collects document uploads exposed as `getAttachments()` (`List<DocumentUpload>`, used only on create) and binds a `Shuttle<Group>` (property `groups` on `UserFormModel`, items from `ListGroups.executeActive()` — only active groups are offered; memberships in inactive groups are not shown and are dropped when the edit is saved, since `UpdateUser` replaces the membership from `groupIds`) in the access tab, letting a user's groups be assigned directly on create/edit via drag-free move buttons; `UserFormDialog` converts the selection to `groupIds` when building the command. `GroupForm` uses tabs, with one `CheckboxGroup<Functionality>` per `Functionality.Category` synced manually to the model (they can't bind directly to a single property). `GroupPage` restricts editing to active groups (`canEdit`) and adds enable/disable actions with `EnableDialog`.
 
 ### Components (`interfaces/ui/component`)
 
@@ -212,7 +213,7 @@ Tables (English columns since V7): `rh_user`, `rh_user_document`, `rh_activation
 
 ### Persistence adapters
 
-Domain repository ports are implemented in `infrastructure/persistence` by `*Adapter` classes wrapping Spring Data `Jpa*Repository` interfaces (`JpaUserRepository`, `JpaGroupRepository`, `JpaActivationTokenRepository`). `JpaGroupRepository.findByIdWithFunctionalities` uses `@EntityGraph(attributePaths = "functionalities")`. `JpaSortUtil.createSort(sorting, fallback)` converts domain `Sorting` to Spring `Sort`.
+Domain repository ports are implemented in `infrastructure/persistence` by `*Adapter` classes wrapping Spring Data `Jpa*Repository` interfaces (`JpaUserRepository`, `JpaGroupRepository`, `JpaActivationTokenRepository`). `JpaGroupRepository.findWithFunctionalitiesById` and `JpaUserRepository.findWithGroupsById` use `@EntityGraph` to fetch the lazy collections needed by edit forms. `JpaSortUtil.createSort(sorting, fallback)` converts domain `Sorting` to Spring `Sort`.
 
 ## Distributed Cache
 
@@ -220,7 +221,7 @@ Hazelcast **embedded** (`CacheConfig` in `infrastructure/config`) via Spring Cac
 
 - Caches: `CacheConfig.USERS` and `CacheConfig.GROUPS`. Map config: TTL `CACHE_TTL_SECONDS` (default 600s), LRU eviction, `PER_NODE` max size (default 5000, `rh-system.cache.max-size`), 1 backup.
 - `@Cacheable`/`@CacheEvict` live on the `*Adapter` classes (infrastructure), never on domain or use cases. All writes (`save`, `delete`) evict with `allEntries = true`.
-- Only list/count queries are cached (keys like `'all'`, `'count'`, `'count:' + #status`, and offset/limit/sort-composed keys for pagination). Point lookups (`findById`, `findByUsername`, `findByEmail`) and `exists*` are NOT cached — they must stay fresh for authentication and uniqueness validation.
+- Only list/count queries are cached (keys like `'all'`, `'all:active'`, `'count'`, `'count:' + #status`, and offset/limit/sort-composed keys for pagination). Point lookups (`findById`, `findByUsername`, `findByEmail`) and `exists*` are NOT cached — they must stay fresh for authentication and uniqueness validation.
 - Cached entities must implement `Serializable` (including embeddables and child entities).
 - Multiple instances still require **sticky sessions** at the load balancer (Vaadin state lives in the HTTP session; only the cache is shared).
 

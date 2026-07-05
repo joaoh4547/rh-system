@@ -18,6 +18,13 @@ public interface UserRepository {
 
     Optional<User> findById(Long id);
 
+    /**
+     * Loads the user with the {@code groups} collection initialized (fetched in
+     * the same query). Use when the caller needs the memberships outside an open
+     * persistence session — e.g. the edit form.
+     */
+    Optional<User> findByIdWithGroups(Long id);
+
     Optional<User> findByEmail(String email);
 
     Optional<User> findByUsername(String username);

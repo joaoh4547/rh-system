@@ -5,6 +5,7 @@ import com.rhsystem.domain.model.usuario.User;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
@@ -13,6 +14,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface JpaUserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByUsername(String username);
+
+    /** Loads the user with the {@code groups} collection fetched in the same query. */
+    @EntityGraph(attributePaths = "groups")
+    Optional<User> findWithGroupsById(Long id);
 
     Optional<User> findByEmailIgnoreCase(String email);
 

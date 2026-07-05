@@ -17,10 +17,16 @@ public class ListGroups {
 
     private GroupRepository groupRepository;
 
-    /** Returns all groups (for internal use / selection widgets). */
+    /** Returns all groups (for internal use). */
     @Transactional(readOnly = true)
     public List<Group> execute() {
         return groupRepository.findAll();
+    }
+
+    /** Returns only active groups — the universe offered by selection widgets. */
+    @Transactional(readOnly = true)
+    public List<Group> executeActive() {
+        return groupRepository.findAllActive();
     }
 
     @Transactional(readOnly = true)

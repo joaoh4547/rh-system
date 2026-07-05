@@ -43,6 +43,12 @@ public class GroupRepositoryAdapter implements GroupRepository {
     }
 
     @Override
+    @Cacheable(cacheNames = CacheConfig.GROUPS, key = "'all:active'")
+    public List<Group> findAllActive() {
+        return jpa.findByActiveTrueOrderByName();
+    }
+
+    @Override
     public List<Group> findAllById(Collection<Long> ids) {
         return jpa.findAllById(ids);
     }

@@ -20,7 +20,6 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.Nullable;
 import jakarta.annotation.security.PermitAll;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
@@ -43,6 +42,7 @@ public class UserPage extends BasePage<User> {
     private final UpdateUser updateUser;
     private final RemoveUser removeUser;
     private final GetUserSummary getUserSummary;
+    private final GetUser getUser;
     private final ListGroups listGroups;
 
     public UserPage(ListUsers listUsers,
@@ -50,12 +50,14 @@ public class UserPage extends BasePage<User> {
                     UpdateUser updateUser,
                     RemoveUser removeUser,
                     GetUserSummary getUserSummary,
+                    GetUser getUser,
                     ListGroups listGroups) {
         this.listUsers = listUsers;
         this.createUser = createUser;
         this.updateUser = updateUser;
         this.removeUser = removeUser;
         this.getUserSummary = getUserSummary;
+        this.getUser = getUser;
         this.listGroups = listGroups;
     }
 
@@ -110,9 +112,11 @@ public class UserPage extends BasePage<User> {
     }
 
     @Override
-    @Transactional(readOnly = true)
     protected Dialog buildForm(@Nullable User user) {
-        return new UserFormDialog(createUser, updateUser, user, listGroups.execute(), this::refresh);
+        // Reload with the groups collection fetched: the grid row is a detached
+        // entity, reading its lazy groups here would throw LazyInitializationException.
+        User editing = user == null ? null : getUser.execute(user.getId());
+        return new UserFormDialog(createUser, updateUser, editing, listGroups.executeActive(), this::refresh);
     }
 
     @Override
