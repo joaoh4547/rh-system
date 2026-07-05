@@ -30,11 +30,13 @@ public class Group implements Serializable {
     @Column(name = "description")
     private String description;
 
+    /** Default {@code true} both for {@code new Group()} and for the builder. */
+    @Builder.Default
     @Column(name = "active")
     private boolean active = true;
 
     @Column(name = "admin")
-    private boolean admin = false;
+    private boolean admin;
 
     @ElementCollection
     @CollectionTable(name = "rh_group_functionality", joinColumns = @JoinColumn(name = "group_id"))
