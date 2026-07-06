@@ -10,6 +10,8 @@ public interface JpaGroupRepository extends JpaRepository<Group, Long> {
 
     long countByActiveTrue();
 
+    java.util.List<Group> findByActiveTrueOrderByName();
+
     /**
      * Loads the full aggregate: the {@code functionalities} collection stays LAZY for
      * list queries (grid/cache), but is fetched in the same query here.

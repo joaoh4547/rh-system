@@ -1,14 +1,14 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Junie when working with code in this repository.
 
 ## Documentation Sync (IMPORTANT)
 
-Whenever a change affects anything documented here — new/renamed classes, use cases, routes, entities, migrations, permissions, configuration, commands, deployment — update **both** `CLAUDE.md` (this file, in English, for Claude Code) and `README.md` (in Portuguese, for developers) in the same change. The two files must never drift apart: CLAUDE.md is the technical reference; README.md is its user-facing counterpart covering the same facts (stack, features, routes, env vars, migrations, how to run).
+Whenever a change affects anything documented here — new/renamed classes, use cases, routes, entities, migrations, permissions, configuration, commands, deployment — update **both** `AGENTS.md` (this file, in English, for Junie) and `README.md` (in Portuguese, for developers) in the same change. The two files must never drift apart: AGENTS.md is the technical reference; README.md is its user-facing counterpart covering the same facts (stack, features, routes, env vars, migrations, how to run).
 
 ## Stack
 
-Java 26, Spring Boot 4.1.x (`spring-boot-starter-parent` 4.1.0), Vaadin 25.2.x, PostgreSQL 17, Flyway, Lombok, Hazelcast embedded (distributed cache). The Spring Boot Maven plugin passes `--add-opens`/`--add-exports` JVM arguments required by Hazelcast — keep them when touching `pom.xml`.
+Java 26, Spring Boot 4.1.x (`spring-boot-starter-parent` 4.1.0), Vaadin 25.2.x, PostgreSQL 17, Flyway, Lombok, Hazelcast embedded (distributed cache). Tests use H2 in-memory (PostgreSQL compatibility mode) — the real database is never touched by tests. Both the Spring Boot Maven plugin and Surefire pass `--add-opens`/`--add-exports` JVM arguments required by Hazelcast — keep them when touching `pom.xml`.
 
 ## Commands
 
@@ -20,7 +20,7 @@ docker compose up -d postgres
 mvnw.cmd spring-boot:run          # Windows
 ./mvnw spring-boot:run            # Linux/macOS
 
-# Run tests (requires PostgreSQL running)
+# Run tests (no PostgreSQL needed — whole suite runs on in-memory H2, profile "test")
 mvnw.cmd test
 
 # Production build (bundles Vaadin frontend via vaadin-maven-plugin build-frontend)
@@ -50,7 +50,7 @@ Code identifiers are in **English** (classes, methods, columns); UI texts remain
 ### Aggregates & entities
 
 - **`User`** (`rh_user`) — fields `firstName`, `lastName`, `username` (immutable, `updatable = false`), `email`, `password` (BCrypt hash), `status`, `cpf` (11 digits), `rg`, embedded `Address`, `createdAt`/`updatedAt`/`termsAcceptedAt`. Unique constraints on username, email, cpf and rg. Relations: `@OneToMany documents` (cascade ALL + orphanRemoval), `@ManyToMany groups` (join table `rh_user_group`), `@ElementCollection functionalities` (`rh_user_functionality`). Behavior methods: `activate(passwordHash)` (sets password + status ACTIVE), `resetPassword(hash)`, `acceptTerms()`/`termsAccepted()`, `addDocument(doc)`, `getFullName()`, `isAdmin()` (any group with admin flag), `getUserFunctionalities()` (see Permissions).
-- **`Group`** (`rh_group`) — `name`, `description`, `active`, `admin`, `@ElementCollection functionalities` (`rh_group_functionality`). Uses Lombok `@Builder`.
+- **`Group`** (`rh_group`) — `name`, `description`, `active`, `admin`, `@ElementCollection functionalities` (`rh_group_functionality`). Uses Lombok `@Builder`. `equals`/`hashCode` are id-based (entity identity), so instances from different sessions/caches compare equal — required by the groups `Shuttle` and `Set<Group>` form models.
 - **`ActivationToken`** (`rh_activation_token`) — UUID `token`, `@OneToOne user`, `expiresAt`, `used`, `purpose` (`TokenPurpose.ACTIVATION` or `PASSWORD_RESET`). `isValid()` = not used and not expired.
 - **`Document`** (`rh_user_document`) — user attachment metadata: `description`, `fileName`, `contentType`, `storagePath`, `size`, `uploadedAt`. Binary content lives on disk (see `FileStorage`).
 - **`Address`** — `@Embeddable` (street, neighborhood, streetNumber, complement, postalCode).
@@ -62,8 +62,8 @@ Cached entities (`User`, `Group`, `Document`, `Address`) implement `Serializable
 
 ### Repository ports (`domain/repository`)
 
-- `UserRepository` — save, findById/findByEmail/findByUsername, findAll, `findPaginated(offset, limit, sorting)`, count, countByStatus, delete, existsByUsername/Email/Cpf/Rg.
-- `GroupRepository` — `findAllPaginated(limit, offset, sorting)`, count, countActive, save, findById, `findByIdWithFunctionalities` (fetches the lazy element collection via `@EntityGraph`).
+- `UserRepository` — save, findById/findByEmail/findByUsername, `findByIdWithGroups` (fetches the lazy `groups` via `@EntityGraph` — used by the edit form), findAll, `findPaginated(offset, limit, sorting)`, count, countByStatus, delete, existsByUsername/Email/Cpf/Rg.
+- `GroupRepository` — `findAllPaginated(limit, offset, sorting)`, `findAll`, `findAllActive` (active only, ordered by name), `findAllById(ids)`, count, countActive, save, findById, `findByIdWithFunctionalities` (fetches the lazy element collection via `@EntityGraph`).
 - `ActivationTokenRepository` — save, findByToken.
 
 ### Domain services (static utilities)
@@ -81,8 +81,8 @@ Cached entities (`User`, `Group`, `Document`, `Address`) implement `Serializable
 
 | Use case | Behavior |
 |---|---|
-| `CreateUser` | Normalizes CPF (`digitsOnly`) and RG (`alphanumericOnly`), collects structural + duplicate (email/cpf/rg) violations, generates username, status `PENDING_CONFIRMATION`, stores documents via `FileStorage`, saves, creates `ActivationToken` (validity from `rh-system.ativacao-token-validade-horas`), sends activation email via `UserNotifier`. |
-| `UpdateUser` | Loads by id, duplicate checks only when the value changed, updates fields + status + address, sets `updatedAt`. Username and documents are not updated here. |
+| `CreateUser` | Normalizes CPF (`digitsOnly`) and RG (`alphanumericOnly`), collects structural + duplicate (email/cpf/rg) violations, generates username, status `PENDING_CONFIRMATION`, stores documents via `FileStorage`, resolves `groupIds` to `Group` entities via `GroupRepository.findAllById` and sets them on the user, saves, creates `ActivationToken` (validity from `rh-system.ativacao-token-validade-horas`), sends activation email via `UserNotifier`. |
+| `UpdateUser` | Loads by id, duplicate checks only when the value changed, updates fields + status + address, replaces the group membership from `groupIds` (`GroupRepository.findAllById`, empty/null clears all groups), sets `updatedAt`. Username and documents are not updated here. |
 | `ActivateUser` | Validates `ActivationCommand`, loads token, requires purpose `ACTIVATION` and `isValid()`, calls `user.activate(encodedPassword)`, marks token used. |
 | `RequestPasswordReset` | Silent no-op if email is blank or unknown (prevents user enumeration); otherwise creates `PASSWORD_RESET` token and emails the link. |
 | `ResetPassword` | Same shape as `ActivateUser` but purpose `PASSWORD_RESET`; calls `user.resetPassword(...)`. |
@@ -90,6 +90,7 @@ Cached entities (`User`, `Group`, `Document`, `Address`) implement `Serializable
 | `AcceptTerms` | Sets `termsAcceptedAt` for the username. |
 | `ListUsers` | `execute()` (all) and `execute(offset, limit, sorting)` (paginated stream). |
 | `GetUserSummary` | KPI record `UserSummary(total, active, pending, blocked)`. |
+| `GetUser` | Loads by id with the `groups` collection fetched (`findByIdWithGroups`) — used by `UserPage.buildForm` so the edit dialog reads memberships without `LazyInitializationException`; throws `error.user.not.found`. |
 | `GetUserByUserName` / `RemoveUser` | Lookup / delete, throwing `BusinessException("error.user.not.found")` when missing. |
 | `UserSupport` | Package-private helpers: `toAddress(dto)`, `isBlank`, `alphanumericOnly`. |
 
@@ -101,14 +102,14 @@ Cached entities (`User`, `Group`, `Document`, `Address`) implement `Serializable
 | `UpdateGroup` | Loads with `findByIdWithFunctionalities`, replaces fields and the functionalities collection (clear + addAll). |
 | `EnableGroup` | `EnableGroupCommand(groupId, enable)` toggles `active`. |
 | `GetGroup` | Loads with functionalities or throws `error.group.not.found`. |
-| `ListGroups` | Paginated stream. |
+| `ListGroups` | `execute()` (all), `execute(offset, limit, sorting)` (paginated stream) and `executeActive()` (active only — universe for selection widgets). |
 | `GetGroupSummary` | `GroupSummary(total, active)`. |
 
 Groups are never deleted — they are disabled (`GroupPage.remove()` is intentionally empty).
 
 ### DTOs / commands (`application/dto`, all records)
 
-`CreateUserCommand`, `UpdateUserCommand` (adds `id` + `status`), `ActivationCommand` (token + password + confirmation, `@FieldsMatch`, shared by activation and password reset), `AddressDTO`, `DocumentUpload` (description, fileName, contentType, byte[] content), `UserSummary`, `LoginResult` enum, `CreateGroupCommand`, `UpdateGroupCommand`, `EnableGroupCommand`, `GroupSummary`. Constraint messages on commands are i18n keys.
+`CreateUserCommand`, `UpdateUserCommand` (adds `id` + `status`; both carry `groupIds` for group membership), `ActivationCommand` (token + password + confirmation, `@FieldsMatch`, shared by activation and password reset), `AddressDTO`, `DocumentUpload` (description, fileName, contentType, byte[] content), `UserSummary`, `LoginResult` enum, `CreateGroupCommand`, `UpdateGroupCommand`, `EnableGroupCommand`, `GroupSummary`. Constraint messages on commands are i18n keys.
 
 ### Output ports (`application/port`)
 
@@ -144,7 +145,7 @@ Seed user from V3 migration: `admin.teste` / `admin123` (already ACTIVE).
 | `groups` | `GroupPage` | `@PermitAll`, layout `MainLayout` |
 | `editor-demo`, `lucide-demo` | demo pages | `MainLayout` |
 
-`MainLayout` is an `AppLayout` with drawer navigation (`SideNav` with sections Ferramentas / Configurações / Segurança), user panel (avatar + full name via `GetUserByUserName`), logout via `AuthenticationContext.logout()`, and an `AppFooter` fixed to the bottom of the page (current year, serving instance address via `ServerInfoProvider`, and a live `SessionTimer`; added to the navbar slot but pinned to the page bottom via CSS `position: fixed`, offset by the drawer width when open). Some drawer items are placeholders without routes.
+`MainLayout` is an `AppLayout` with drawer navigation (`SideNav` with sections Ferramentas / Configurações / Segurança), user panel (avatar + full name via `GetUserByUserName`), and logout via `AuthenticationContext.logout()`. Some drawer items are placeholders without routes.
 
 ### CRUD base classes (`interfaces/ui/shared`)
 
@@ -160,7 +161,7 @@ Seed user from V3 migration: `admin.teste` / `admin123` (already ACTIVE).
 
 ### Form stack (`interfaces/ui/form`)
 
-- **`Form<T>`** — `Div` bound via `BeanValidationBinder<T>` (bean type explicit or resolved reflectively). Provides bind helpers (`bind`, `bindRequired`) and field factories: `textField`, `requiredTextField`, `emailField`, `passwordField`, `textArea`, `integerField`, `numberField`, `bigDecimalField`, `datePicker`, `timePicker`, checkbox, etc., each with an optional `(label, property)` overload that auto-binds. Write with `writeBeanIfValid(target)` / `ifValid(target)`.
+- **`Form<T>`** — `Div` bound via `BeanValidationBinder<T>` (bean type explicit or resolved reflectively). Provides bind helpers (`bind`, `bindRequired`) and field factories: `textField`, `requiredTextField`, `emailField`, `passwordField`, `textArea`, `integerField`, `numberField`, `bigDecimalField`, `datePicker`, `timePicker`, `comboBox`, `multiSelectComboBox`, `shuttle` (see `Shuttle<T>` component), checkbox, etc., each with an optional `(label, property)` overload that auto-binds. Write with `writeBeanIfValid(target)` / `ifValid(target)`.
 - **`FormDialog<T>`** — `Dialog` wrapper: translated title, draggable/resizable, maximize/restore button, `width("680px")`, footer actions via `actions(FormDialogAction...)`, `open(bean)` (setBean + open), `notify(key, success)`.
 - **`FormDialogAction`** — footer button builder; factories `FormDialogAction.cancel(text)` and `FormDialogAction.primary(text, handler)`.
 
@@ -168,15 +169,14 @@ Seed user from V3 migration: `admin.teste` / `admin123` (already ACTIVE).
 
 Each entity has in `interfaces/ui/pages/<entity>/`: `<Entity>Page` (extends `BasePage`), `<Entity>Grid` (extends `ActionsGrid`), `<Entity>Form` (extends `Form<Model>`), `<Entity>FormDialog` (extends `FormDialog<Model>`), `<Entity>FormModel` (mutable UI bean with a `from(entity)` factory). The dialog's save flow: `writeBeanIfValid(model)` → convert model to command record → call create/update use case → `notify` + `onSaved.run()` + `close()`, catching `ValidationException` with `ValidationNotifier`. The FormModel isolates the UI from both entity and commands — follow this for new entities.
 
-Entity-specific notes: `UserForm` collects document uploads exposed as `getAttachments()` (`List<DocumentUpload>`, used only on create). `GroupForm` uses tabs, with one `CheckboxGroup<Functionality>` per `Functionality.Category` synced manually to the model (they can't bind directly to a single property). `GroupPage` restricts editing to active groups (`canEdit`) and adds enable/disable actions with `EnableDialog`.
+Entity-specific notes: `UserForm` collects document uploads exposed as `getAttachments()` (`List<DocumentUpload>`, used only on create) and binds a `Shuttle<Group>` (property `groups` on `UserFormModel`, items from `ListGroups.executeActive()` — only active groups are offered; memberships in inactive groups are not shown and are dropped when the edit is saved, since `UpdateUser` replaces the membership from `groupIds`) in the access tab, letting a user's groups be assigned directly on create/edit via drag-free move buttons; `UserFormDialog` converts the selection to `groupIds` when building the command. `GroupForm` uses tabs, with one `CheckboxGroup<Functionality>` per `Functionality.Category` synced manually to the model (they can't bind directly to a single property). `GroupPage` restricts editing to active groups (`canEdit`) and adds enable/disable actions with `EnableDialog`.
 
 ### Components (`interfaces/ui/component`)
 
-- **`AppFooter`** — page footer bar (`Footer`) fixed to the bottom of the page, showing `footer.copyright` (current `Year`, passed as a `String` so it isn't rendered with a thousands separator), `footer.server` (instance address from `ServerInfoProvider`), and the `SessionTimer`. Visible to all authenticated users.
-- **`SessionTimer`** — live session countdown (`Span`) in the footer. The countdown runs **client-side** (JS via `executeJs`) for a smooth per-second display and resets on real user activity (mousedown/keydown/scroll/touchstart/click — bare `mousemove` is intentionally excluded so hovering doesn't keep the session alive). It calls three `@ClientCallable` server methods: `keepAlive()` (throttled to once per minute on activity, refreshing the HTTP session), `showWarning()` (at `warningMinutes` remaining, opens a `ConfirmDialog`; confirming resets the client timer), and `expire()` (at zero, opens a blocking `Dialog` whose only action runs `AuthenticationContext.logout()`). Durations come from `rh-system.session` (`timeoutMinutes`/`warningMinutes`). The server-side `server.servlet.session.timeout` is the authoritative backstop; `vaadin.closeIdleSessions=true` is required so Vaadin heartbeats don't keep idle sessions alive forever.
 - **`LucideIcon`** — Lucide icon component with static factories (`edit`, `delete`, `add`, `check`, `lock`, `unLock`, `functionalities`).
 - **`StatCard(label, value, VaadinIcon, Accent)`** — KPI card; `Accent`: PRIMARY, SUCCESS, WARNING, DANGER.
 - **`DocumentField`** — masked `TextField` for `Type.CPF`/`Type.RG` with `getDigits()`/`setDigits()`.
+- **`Shuttle<T>`** — dual-list ("shuttle"/transfer list) multi-select field, `CustomField<Set<T>>` so it binds like any other field. Two styled panels (available/chosen), each with a header (caption + item-count badge), an eager filter `TextField` and an empty-state hint, plus `>`/`<`/`>>`/`<<` move buttons with tooltips, auto enabled/disabled by selection/content. Styling via `.shuttle-*` classes in `styles.css`; i18n keys `shuttle.*`. `setItems(Collection<T>)` sets the universe, `setItemLabelGenerator`, `setCaptions(availableLabel, chosenLabel)` for the panel headers. Exposed via `Form.shuttle(label, property, items, labelGenerator)`.
 - **`RichTextEditor`** + **`RichTextSanitizer`** — rich text editing; sanitizer uses OWASP java-html-sanitizer with a strict allowlist policy. Always sanitize HTML before persisting/rendering.
 
 ## Validation
@@ -207,27 +207,27 @@ When adding rules: new message keys go in both `i18n/messages.properties` and `m
 
 PostgreSQL 17. Flyway migrations in `src/main/resources/db/migration/` (`baseline-on-migrate: true`). Older files use `V{n}__{description}.sql`; **new migrations use timestamp versions** `V{yyyyMMddHHmmss}__{description}.sql` (e.g., `V20260703174848__...`). Schema is managed exclusively through Flyway (`ddl-auto: validate`, `open-in-view: false`). When adding entities, always create a new migration file.
 
-Current migrations: V1 init, V2 usuario, V3 seed admin user, V4 token purpose, V5 terms, V6 grupo, V7 rename to English/`rh_` prefix, V20260703174848 user↔group and user↔functionality tables.
+Current migrations: V1 init, V2 usuario, V3 seed admin user, V4 token purpose, V5 terms, V6 grupo, V7 rename to English/`rh_` prefix, V20260703174848 user↔group and user↔functionality tables, V20260704231443 convert Portuguese enum values to English (`ATIVO`→`ACTIVE`, token `ATIVACAO`→`ACTIVATION`; V7 renamed columns but not values — a fresh database would break JPA enum mapping without this).
 
 Tables (English columns since V7): `rh_user`, `rh_user_document`, `rh_activation_token`, `rh_group`, `rh_group_functionality`, `rh_user_group`, `rh_user_functionality`.
 
 ### Persistence adapters
 
-Domain repository ports are implemented in `infrastructure/persistence` by `*Adapter` classes wrapping Spring Data `Jpa*Repository` interfaces (`JpaUserRepository`, `JpaGroupRepository`, `JpaActivationTokenRepository`). `JpaGroupRepository.findByIdWithFunctionalities` uses `@EntityGraph(attributePaths = "functionalities")`. `JpaSortUtil.createSort(sorting, fallback)` converts domain `Sorting` to Spring `Sort`.
+Domain repository ports are implemented in `infrastructure/persistence` by `*Adapter` classes wrapping Spring Data `Jpa*Repository` interfaces (`JpaUserRepository`, `JpaGroupRepository`, `JpaActivationTokenRepository`). `JpaGroupRepository.findWithFunctionalitiesById` and `JpaUserRepository.findWithGroupsById` use `@EntityGraph` to fetch the lazy collections needed by edit forms. `JpaSortUtil.createSort(sorting, fallback)` converts domain `Sorting` to Spring `Sort`.
 
 ## Distributed Cache
 
-Hazelcast **embedded** (`CacheConfig` in `infrastructure/config`) via Spring Cache abstraction (`HazelcastCacheManager`). Each instance embeds a cluster member; members with the same `HZ_CLUSTER_NAME` discover each other (TCP-IP when `HZ_MEMBERS` is set, multicast otherwise; port auto-increments if busy) and share the cache, so eviction on one instance propagates to all.
+Hazelcast **embedded** (`CacheConfig` in `infrastructure/config`) via Spring Cache abstraction (`HazelcastCacheManager`). Each instance embeds a cluster member; members with the same `HZ_CLUSTER_NAME` discover each other (TCP-IP when `HZ_MEMBERS` is set, multicast otherwise; port auto-increments if busy) and share the cache, so eviction on one instance propagates to all. The whole cache can be switched off with `rh-system.cache.enabled=false` (`CacheConfig` is `@ConditionalOnBooleanProperty`, default `true`): no Hazelcast node starts and caching annotations become no-ops — this is how the test profile runs.
 
 - Caches: `CacheConfig.USERS` and `CacheConfig.GROUPS`. Map config: TTL `CACHE_TTL_SECONDS` (default 600s), LRU eviction, `PER_NODE` max size (default 5000, `rh-system.cache.max-size`), 1 backup.
 - `@Cacheable`/`@CacheEvict` live on the `*Adapter` classes (infrastructure), never on domain or use cases. All writes (`save`, `delete`) evict with `allEntries = true`.
-- Only list/count queries are cached (keys like `'all'`, `'count'`, `'count:' + #status`, and offset/limit/sort-composed keys for pagination). Point lookups (`findById`, `findByUsername`, `findByEmail`) and `exists*` are NOT cached — they must stay fresh for authentication and uniqueness validation.
+- Only list/count queries are cached (keys like `'all'`, `'all:active'`, `'count'`, `'count:' + #status`, and offset/limit/sort-composed keys for pagination). Point lookups (`findById`, `findByUsername`, `findByEmail`) and `exists*` are NOT cached — they must stay fresh for authentication and uniqueness validation.
 - Cached entities must implement `Serializable` (including embeddables and child entities).
 - Multiple instances still require **sticky sessions** at the load balancer (Vaadin state lives in the HTTP session; only the cache is shared).
 
 ## Configuration
 
-`RhSystemProperties` (`@ConfigurationProperties(prefix = "rh-system")`): `baseUrl`, `mailFrom`, `activationTokenValidityHours`, `storageDir`, nested `cache` (clusterName, members, port, ttlSeconds, maxSize), nested `session` (`timeoutMinutes` default 60, `warningMinutes` default 5). `application.yml` also sets: `open-in-view: false`, SMTP with STARTTLS required, logging `com.rhsystem: DEBUG`, `server.servlet.session.timeout=60m`, and `vaadin.closeIdleSessions=true` + `vaadin.heartbeatInterval=300` (so idle sessions actually expire despite Vaadin heartbeats). These two are Vaadin servlet init parameters (not bound to `VaadinConfigurationProperties`), so the IDE flags them as unresolved even though they apply; `SessionConfigLogger` (a `VaadinServiceInitListener`) logs the effective `isCloseIdleSessions()`/`getHeartbeatInterval()` at startup to confirm.
+`RhSystemProperties` (`@ConfigurationProperties(prefix = "rh-system")`): `baseUrl`, `mailFrom`, `activationTokenValidityHours`, `storageDir`, nested `cache` (clusterName, members, port, ttlSeconds, maxSize). `application.yml` also sets: `open-in-view: false`, SMTP with STARTTLS required, logging `com.rhsystem: DEBUG`.
 
 ### Environment variables
 
@@ -241,8 +241,6 @@ Hazelcast **embedded** (`CacheConfig` in `infrastructure/config`) via Spring Cac
 | `APP_BASE_URL` | `http://localhost:8080` — used to build activation/reset links |
 | `ATIVACAO_TOKEN_HORAS` | `24` |
 | `STORAGE_DIR` | `./storage/documentos` |
-| `SESSION_TIMEOUT_MINUTES` | `60` — session lifetime without activity (also drives the footer timer) |
-| `SESSION_WARNING_MINUTES` | `5` — how early the expiration warning dialog appears |
 | `HZ_CLUSTER_NAME` | `rh-system` |
 | `HZ_MEMBERS` | (empty) — comma-separated `host[:port]` list; empty = multicast discovery |
 | `HZ_PORT` | `5701` |
@@ -254,5 +252,13 @@ Hazelcast **embedded** (`CacheConfig` in `infrastructure/config`) via Spring Cac
 
 ## Testing
 
-- `src/test/java/.../validation/` — plain unit tests (`CommandValidatorTest`, `ValidationResultTest`), no Spring or database.
-- `RhSystemApplicationTests` — Spring context smoke test; requires PostgreSQL running (`docker compose up -d postgres`).
+All tests run against **in-memory H2** (PostgreSQL compatibility mode), never the real database. The `test` profile (`src/test/resources/application-test.yml`) points the datasource at `jdbc:h2:mem:...;MODE=PostgreSQL` and the real Flyway migrations run on it, so the schema under test is the production schema (`ddl-auto: validate` stays on). Test-only dependencies: `com.h2database:h2` and `spring-boot-starter-data-jpa-test` (Spring Boot 4 moved `@DataJpaTest` to `org.springframework.boot.data.jpa.test.autoconfigure`, `@AutoConfigureTestDatabase` to `org.springframework.boot.jdbc.test.autoconfigure`).
+
+- **Domain** (plain JUnit, no Spring): `UserTest` (permissions, activation, terms), `GroupTest` (id-based equality), `ActivationTokenTest`, `FunctionalityTest`, `CpfValidatorTest`, `UsernameGeneratorTest`.
+- **Validation** (plain JUnit): `CommandValidatorTest`, `ValidationResultTest`.
+- **Use cases** (Mockito + real `CommandValidator`, no database): one test class per write use case (`CreateUserTest`, `UpdateUserTest`, `ActivateUserTest`, `ResetPasswordTest`, `RequestPasswordResetTest`, `ValidateLoginTest`), grouped classes for queries (`UserQueryUseCasesTest`, `GroupCommandUseCasesTest`, `GroupQueryUseCasesTest`), plus `UserSupportTest`.
+- **Persistence** (`@DataJpaTest` + `@ActiveProfiles("test")` + `@AutoConfigureTestDatabase(replace = NONE)`, importing the `*Adapter` beans): `UserPersistenceTest`, `GroupPersistenceTest`, `ActivationTokenPersistenceTest` — round trips, `@EntityGraph` fetches, pagination/sorting, uniqueness checks, Flyway seed verification. Cache annotations are inert in the slice (no CacheManager), so Hazelcast does not start.
+- **Infrastructure/UI utilities**: `JpaSortUtilTest`, `LocalFileStorageTest` (`@TempDir`), `RichTextSanitizerTest` (XSS whitelist).
+- `RhSystemApplicationTests` — full-context smoke test on H2 (`@ActiveProfiles("test")`). The test profile sets `rh-system.cache.enabled: false`: `CacheConfig` is `@ConditionalOnBooleanProperty` on that flag (default `true`), so no Hazelcast node starts and, without `@EnableCaching`, the caching annotations are no-ops. This prevents the test node from trying to join a dev instance running on port 5701. Surefire still carries the Hazelcast `--add-opens` args in its `argLine`.
+
+Conventions for new tests: unit-test new domain/application code without Spring; persistence tests join the existing slice classes (same `@Import` list keeps one shared context); tests must stay independent of the V3 seed data except where they assert it explicitly.

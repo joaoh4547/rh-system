@@ -1,10 +1,12 @@
 package com.rhsystem.interfaces.ui.form;
 
+import com.rhsystem.interfaces.ui.component.Shuttle;
 import com.rhsystem.utils.Reflections;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.HasValue;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.formlayout.FormLayout;
@@ -228,6 +230,40 @@ public abstract class Form<T> extends Div {
         ComboBox<E> cb = comboBox(label, items);
         cb.setItemLabelGenerator(labelGenerator);
         return bind(cb, property);
+    }
+
+    protected <E> MultiSelectComboBox<E> multiSelectComboBox(String label, Collection<E> items) {
+        MultiSelectComboBox<E> cb = configure(new MultiSelectComboBox<>(label));
+        cb.setItems(items);
+        return cb;
+    }
+
+    protected <E> MultiSelectComboBox<E> multiSelectComboBox(String label, String property, Collection<E> items) {
+        return bind(multiSelectComboBox(label, items), property);
+    }
+
+    protected <E> MultiSelectComboBox<E> multiSelectComboBox(String label, String property, Collection<E> items,
+                                                              com.vaadin.flow.component.ItemLabelGenerator<E> labelGenerator) {
+        MultiSelectComboBox<E> cb = multiSelectComboBox(label, items);
+        cb.setItemLabelGenerator(labelGenerator);
+        return bind(cb, property);
+    }
+
+    protected <E> Shuttle<E> shuttle(String label, Collection<E> items) {
+        Shuttle<E> s = new Shuttle<>(label);
+        s.setItems(items);
+        return s;
+    }
+
+    protected <E> Shuttle<E> shuttle(String label, String property, Collection<E> items) {
+        return bind(shuttle(label, items), property);
+    }
+
+    protected <E> Shuttle<E> shuttle(String label, String property, Collection<E> items,
+                                     com.vaadin.flow.component.ItemLabelGenerator<E> labelGenerator) {
+        Shuttle<E> s = shuttle(label, items);
+        s.setItemLabelGenerator(labelGenerator);
+        return bind(s, property);
     }
 
     protected <E> Select<E> select(String label, Collection<E> items) {

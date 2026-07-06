@@ -1,0 +1,25 @@
+# Profile "test": banco H2 em memória (modo de compatibilidade PostgreSQL).
+# Nenhum teste toca o PostgreSQL real — as migrations Flyway rodam no H2.
+spring:
+  datasource:
+    url: jdbc:h2:mem:rh_system_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+rh-system:
+  # Anexos gravados em diretório temporário durante os testes
+  storage-dir: ${java.io.tmpdir}/rh-system-test-storage
+  cache:
+    # Sem Hazelcast nos testes: nenhum nó/cluster é criado e as anotações de
+    # cache viram no-ops — evita conflito com a aplicação rodando na mesma
+    # máquina (porta 5701) e deixa os testes mais rápidos e isolados.
+    enabled: false

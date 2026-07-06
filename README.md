@@ -62,7 +62,7 @@ Convenção de idioma: **identificadores de código em inglês** (classes, méto
 
 Cada operação é uma classe `@Service` com um único método `execute(...)`:
 
-- **Usuários** (`application/usecase/usuario`): `CreateUser`, `UpdateUser`, `RemoveUser`, `ListUsers`, `GetUserSummary`, `GetUserByUserName`, `ActivateUser`, `RequestPasswordReset`, `ResetPassword`, `ValidateLogin`, `AcceptTerms`.
+- **Usuários** (`application/usecase/usuario`): `CreateUser`, `UpdateUser`, `RemoveUser`, `ListUsers`, `GetUserSummary`, `GetUser` (carrega o usuário com os grupos para o formulário de edição), `GetUserByUserName`, `ActivateUser`, `RequestPasswordReset`, `ResetPassword`, `ValidateLogin`, `AcceptTerms`.
 - **Grupos** (`application/usecase/group`): `CreateGroup`, `UpdateGroup`, `EnableGroup`, `GetGroup`, `ListGroups`, `GetGroupSummary`.
 
 ### Portas de saída
@@ -75,7 +75,9 @@ Cada operação é uma classe `@Service` com um único método `execute(...)`:
 
 ### Usuários
 
-Campos: nome, sobrenome, username, email, senha, status, CPF, RG, endereço (logradouro, bairro, número, complemento, CEP) e documentos anexados.
+Campos: nome, sobrenome, username, email, senha, status, CPF, RG, endereço (logradouro, bairro, número, complemento, CEP), documentos anexados e **grupos vinculados**.
+
+- **Vínculo com grupos**: o formulário de usuário tem um seletor duplo estilo "shuttle" (`Shuttle<Group>`, duas listas com botões para mover itens entre "Disponíveis" e "Selecionados") para associar o usuário a um ou mais grupos, tanto na criação quanto na edição; apenas grupos **ativos** são oferecidos (`ListGroups.executeActive()`). Se o usuário tiver vínculo com um grupo inativo, ele não aparece no seletor e é removido ao salvar a edição (o `UpdateUser` substitui a associação pelos `groupIds` enviados). Na edição o usuário é recarregado com os grupos já inicializados (`GetUser`), evitando erro de lazy loading.
 
 - **Username automático**: `nome.sobrenome` (minúsculo, sem acentos, conectivos como "de"/"da"/"dos" são ignorados); se já existir recebe sufixo numérico (`joao.henrique`, `joao.henrique.2`, ...). Imutável após criação.
 - **CPF validado** pelos dígitos verificadores e armazenado só com dígitos (11 chars); CPF e RG têm **máscara automática** na tela (`DocumentField`).
@@ -174,6 +176,7 @@ Emails enviados (sempre em pt-BR): ativação de conta (`/activate/{token}`) e r
 Hazelcast **embedded** via Spring Cache — cada instância da aplicação embute um membro do cluster; instâncias com o mesmo `HZ_CLUSTER_NAME` se descobrem e compartilham o cache (eviction em uma instância propaga para todas).
 
 - Descoberta: **TCP-IP** quando `HZ_MEMBERS` está definido (lista `host[:porta]` separada por vírgula); **multicast** quando vazio (rede local/mesma máquina). A porta base (`HZ_PORT`, padrão 5701) incrementa automaticamente se ocupada.
+- Liga/desliga: `rh-system.cache.enabled` (padrão `true`). Com `false`, nenhum nó Hazelcast é criado e as anotações de cache viram no-ops — é assim que os testes rodam.
 - Caches `users` e `groups`: TTL `CACHE_TTL_SECONDS` (padrão 600s), eviction LRU, tamanho máximo por nó 5000 entradas, 1 backup.
 - **Somente consultas de lista/contagem são cacheadas.** Buscas pontuais (`findById`, `findByUsername`, `findByEmail`) e `exists*` NÃO são — precisam estar sempre frescas para autenticação e validação de unicidade.
 - Anotações `@Cacheable`/`@CacheEvict` ficam apenas nos `*Adapter` de persistência (infraestrutura); escritas evictam com `allEntries = true`.
@@ -246,11 +249,19 @@ O `MainLayout` tem um rodapé (`AppFooter`) fixo na base da página (barra full-
 ## Testes
 
 ```bash
-./mvnw test        # requer PostgreSQL no ar (docker compose up -d postgres)
+./mvnw test        # NÃO requer PostgreSQL — os testes usam H2 em memória
 ```
 
-- Testes unitários de validação (`CommandValidatorTest`, `ValidationResultTest`) rodam sem Spring e sem banco.
-- `RhSystemApplicationTests` sobe o contexto Spring (precisa do banco).
+A suíte roda inteira contra um banco **H2 em memória** (modo de compatibilidade PostgreSQL), configurado pelo profile `test` (`src/test/resources/application-test.yml`). As migrations Flyway reais são aplicadas no H2, então o schema testado é o mesmo do banco de produção. O PostgreSQL nunca é tocado pelos testes.
+
+Camadas cobertas:
+
+- **Domínio** (sem Spring): entidades (`UserTest`, `GroupTest`, `ActivationTokenTest`, `FunctionalityTest`) e serviços (`CpfValidatorTest`, `UsernameGeneratorTest`).
+- **Validação** (sem Spring): `CommandValidatorTest`, `ValidationResultTest`.
+- **Casos de uso** (Mockito, sem banco): criação/atualização/ativação de usuário, reset de senha, login, aceite de termos, consultas e todos os casos de uso de grupo (`application/usecase/**`).
+- **Persistência** (`@DataJpaTest` + H2 + Flyway): adapters `UserRepositoryAdapter`, `GroupRepositoryAdapter`, `ActivationTokenRepositoryAdapter`, paginação/ordenação (`JpaSortUtilTest`) e verificação do usuário seed.
+- **Infraestrutura/UI utilitários**: `LocalFileStorageTest` (diretório temporário), `RichTextSanitizerTest` (XSS).
+- **Smoke test**: `RhSystemApplicationTests` sobe o contexto completo (Vaadin, Security) sobre o H2. O Hazelcast fica **desligado** nos testes (`rh-system.cache.enabled: false` no profile `test`) — nenhum nó/cluster é criado e as anotações de cache viram no-ops.
 
 ## Estrutura do projeto
 
@@ -265,7 +276,8 @@ O `MainLayout` tem um rodapé (`AppFooter`) fixo na base da página (barra full-
 │   ├── application.yml
 │   ├── db/migration/      # migrations Flyway (V1..V7 + timestamps)
 │   └── i18n/              # messages.properties (pt-BR), messages_en.properties
-├── src/test/java/         # testes unitários de validação + smoke test do contexto
+├── src/test/java/         # testes de domínio, casos de uso, persistência (H2) e smoke test
+├── src/test/resources/    # application-test.yml (H2 em memória, modo PostgreSQL)
 ├── docker-compose.yml     # postgres + app1 + app2 + nginx
 ├── Dockerfile             # build multi-stage (produção)
 └── nginx.conf             # load balancer (ip_hash + WebSocket)

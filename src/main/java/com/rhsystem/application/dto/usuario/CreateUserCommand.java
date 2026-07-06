@@ -4,6 +4,7 @@ import com.rhsystem.application.validation.CPF;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Command for creating a new user.
@@ -30,6 +31,7 @@ public record CreateUserCommand(
         String rg,
 
         AddressDTO address,
-        List<DocumentUpload> documents
+        List<DocumentUpload> documents,
+        Set<Long> groupIds
 ) {
 }

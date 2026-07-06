@@ -11,11 +11,14 @@ import com.rhsystem.domain.model.usuario.TokenPurpose;
 import com.rhsystem.domain.model.usuario.UserStatus;
 import com.rhsystem.domain.model.usuario.User;
 import com.rhsystem.domain.repository.ActivationTokenRepository;
+import com.rhsystem.domain.repository.GroupRepository;
 import com.rhsystem.domain.repository.UserRepository;
 import com.rhsystem.domain.service.CpfValidator;
 import com.rhsystem.domain.service.UsernameGenerator;
 import com.rhsystem.domain.validation.ValidationResult;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CreateUser {
 
     private final UserRepository userRepository;
+    private final GroupRepository groupRepository;
     private final ActivationTokenRepository tokenRepository;
     private final UserNotifier notifier;
     private final FileStorage fileStorage;
@@ -35,12 +39,14 @@ public class CreateUser {
     private final long tokenValidityHours;
 
     public CreateUser(UserRepository userRepository,
+                      GroupRepository groupRepository,
                       ActivationTokenRepository tokenRepository,
                       UserNotifier notifier,
                       FileStorage fileStorage,
                       CommandValidator commandValidator,
                       @Value("${rh-system.ativacao-token-validade-horas:24}") long tokenValidityHours) {
         this.userRepository = userRepository;
+        this.groupRepository = groupRepository;
         this.tokenRepository = tokenRepository;
         this.notifier = notifier;
         this.fileStorage = fileStorage;
@@ -74,6 +80,8 @@ public class CreateUser {
         user.setUsername(UsernameGenerator.generate(cmd.firstName(), cmd.lastName(),
                 userRepository::existsByUsername));
         user.setAddress(UserSupport.toAddress(cmd.address()));
+        user.setGroups(new ArrayList<>(groupRepository.findAllById(
+                cmd.groupIds() == null ? Set.of() : cmd.groupIds())));
 
         if (cmd.documents() != null) {
             for (DocumentUpload upload : cmd.documents()) {

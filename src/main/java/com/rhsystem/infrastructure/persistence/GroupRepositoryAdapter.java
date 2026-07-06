@@ -12,6 +12,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -33,6 +34,23 @@ public class GroupRepositoryAdapter implements GroupRepository {
         int page = limit > 0 ? offset / limit : 0;
         var pageable = JpaSortUtil.createSort(sorting, Sort.by("name"));
         return jpa.findAll(PageRequest.of(page, limit, pageable)).getContent();
+    }
+
+    @Override
+    @Cacheable(cacheNames = CacheConfig.GROUPS, key = "'all'")
+    public List<Group> findAll() {
+        return jpa.findAll();
+    }
+
+    @Override
+    @Cacheable(cacheNames = CacheConfig.GROUPS, key = "'all:active'")
+    public List<Group> findAllActive() {
+        return jpa.findByActiveTrueOrderByName();
+    }
+
+    @Override
+    public List<Group> findAllById(Collection<Long> ids) {
+        return jpa.findAllById(ids);
     }
 
     @Override

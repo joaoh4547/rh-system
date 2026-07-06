@@ -9,6 +9,7 @@ import com.hazelcast.config.MaxSizePolicy;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.spring.cache.HazelcastCacheManager;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -26,9 +27,14 @@ import org.springframework.context.annotation.Configuration;
  * host[:port] list, env {@code HZ_MEMBERS}), TCP-IP discovery is used — the right
  * choice for containers/cloud. When empty, multicast discovery is used, which is
  * enough for instances on the same machine/local network.</p>
+ *
+ * <p>The whole cache can be turned off with {@code rh-system.cache.enabled=false}
+ * (used by the test profile: no Hazelcast node, and without {@code @EnableCaching}
+ * the {@code @Cacheable}/{@code @CacheEvict} annotations become no-ops).</p>
  */
 @Configuration
 @EnableCaching
+@ConditionalOnBooleanProperty(name = "rh-system.cache.enabled", matchIfMissing = true)
 public class CacheConfig {
 
     /** Cache for User aggregate queries. */
