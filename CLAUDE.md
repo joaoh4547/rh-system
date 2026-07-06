@@ -144,7 +144,7 @@ Seed user from V3 migration: `admin.teste` / `admin123` (already ACTIVE).
 | `groups` | `GroupPage` | `@PermitAll`, layout `MainLayout` |
 | `editor-demo`, `lucide-demo` | demo pages | `MainLayout` |
 
-`MainLayout` is an `AppLayout` with drawer navigation (`SideNav` with sections Ferramentas / Configurações / Segurança), user panel (avatar + full name via `GetUserByUserName`), and logout via `AuthenticationContext.logout()`. Some drawer items are placeholders without routes.
+`MainLayout` is an `AppLayout` with drawer navigation (`SideNav` with sections Ferramentas / Configurações / Segurança), user panel (avatar + full name via `GetUserByUserName`), logout via `AuthenticationContext.logout()`, and an `AppFooter` pinned to the bottom of the drawer (current year, serving instance address via `ServerInfoProvider`, and a live `SessionTimer`). Some drawer items are placeholders without routes.
 
 ### CRUD base classes (`interfaces/ui/shared`)
 
@@ -172,6 +172,8 @@ Entity-specific notes: `UserForm` collects document uploads exposed as `getAttac
 
 ### Components (`interfaces/ui/component`)
 
+- **`AppFooter`** — drawer footer (`Footer`) showing `footer.copyright` (current `Year`), `footer.server` (instance address from `ServerInfoProvider`), and the `SessionTimer`. Visible to all authenticated users.
+- **`SessionTimer`** — live session countdown (`Span`) in the footer. The countdown runs **client-side** (JS via `executeJs`) for a smooth per-second display and resets on any user activity (mousemove/keydown/scroll/touch/click). It calls three `@ClientCallable` server methods: `keepAlive()` (throttled to once per minute on activity, refreshing the HTTP session), `showWarning()` (at `warningMinutes` remaining, opens a `ConfirmDialog`; confirming resets the client timer), and `expire()` (at zero, opens a blocking `Dialog` whose only action runs `AuthenticationContext.logout()`). Durations come from `rh-system.session` (`timeoutMinutes`/`warningMinutes`). The server-side `server.servlet.session.timeout` is the authoritative backstop; `vaadin.close-idle-sessions=true` is required so Vaadin heartbeats don't keep idle sessions alive forever.
 - **`LucideIcon`** — Lucide icon component with static factories (`edit`, `delete`, `add`, `check`, `lock`, `unLock`, `functionalities`).
 - **`StatCard(label, value, VaadinIcon, Accent)`** — KPI card; `Accent`: PRIMARY, SUCCESS, WARNING, DANGER.
 - **`DocumentField`** — masked `TextField` for `Type.CPF`/`Type.RG` with `getDigits()`/`setDigits()`.
@@ -225,7 +227,7 @@ Hazelcast **embedded** (`CacheConfig` in `infrastructure/config`) via Spring Cac
 
 ## Configuration
 
-`RhSystemProperties` (`@ConfigurationProperties(prefix = "rh-system")`): `baseUrl`, `mailFrom`, `activationTokenValidityHours`, `storageDir`, nested `cache` (clusterName, members, port, ttlSeconds, maxSize). `application.yml` also sets: `open-in-view: false`, SMTP with STARTTLS required, logging `com.rhsystem: DEBUG`.
+`RhSystemProperties` (`@ConfigurationProperties(prefix = "rh-system")`): `baseUrl`, `mailFrom`, `activationTokenValidityHours`, `storageDir`, nested `cache` (clusterName, members, port, ttlSeconds, maxSize), nested `session` (`timeoutMinutes` default 60, `warningMinutes` default 5). `application.yml` also sets: `open-in-view: false`, SMTP with STARTTLS required, logging `com.rhsystem: DEBUG`, `server.servlet.session.timeout=60m`, and `vaadin.close-idle-sessions=true` + `vaadin.heartbeat-interval=300` (so idle sessions actually expire despite Vaadin heartbeats).
 
 ### Environment variables
 
@@ -239,6 +241,8 @@ Hazelcast **embedded** (`CacheConfig` in `infrastructure/config`) via Spring Cac
 | `APP_BASE_URL` | `http://localhost:8080` — used to build activation/reset links |
 | `ATIVACAO_TOKEN_HORAS` | `24` |
 | `STORAGE_DIR` | `./storage/documentos` |
+| `SESSION_TIMEOUT_MINUTES` | `60` — session lifetime without activity (also drives the footer timer) |
+| `SESSION_WARNING_MINUTES` | `5` — how early the expiration warning dialog appears |
 | `HZ_CLUSTER_NAME` | `rh-system` |
 | `HZ_MEMBERS` | (empty) — comma-separated `host[:port]` list; empty = multicast discovery |
 | `HZ_PORT` | `5701` |

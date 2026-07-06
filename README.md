@@ -204,6 +204,8 @@ docker compose up -d --build    # postgres + app1 + app2 + nginx em http://local
 | `rh-system.mail-from` | `MAIL_FROM` | `MAIL_USERNAME` → `no-reply@rhsystem.com` |
 | `rh-system.ativacao-token-validade-horas` | `ATIVACAO_TOKEN_HORAS` | `24` |
 | `rh-system.storage-dir` | `STORAGE_DIR` | `./storage/documentos` |
+| `rh-system.session.timeout-minutes` | `SESSION_TIMEOUT_MINUTES` | `60` (tempo de vida da sessão sem atividade) |
+| `rh-system.session.warning-minutes` | `SESSION_WARNING_MINUTES` | `5` (antecedência do aviso de expiração) |
 | `rh-system.cache.cluster-name` | `HZ_CLUSTER_NAME` | `rh-system` |
 | `rh-system.cache.members` | `HZ_MEMBERS` | (vazio = multicast) |
 | `rh-system.cache.port` | `HZ_PORT` | `5701` |
@@ -237,7 +239,9 @@ Base de CRUD reutilizável em `interfaces/ui/shared`:
 
 Infra de formulários em `interfaces/ui/form`: **`Form<T>`** (binder + fábricas de campos), **`FormDialog<T>`** (diálogo arrastável/redimensionável com maximizar) e **`FormDialogAction`** (botões do rodapé). Cada entidade segue o conjunto `Page` / `Grid` / `Form` / `FormDialog` / `FormModel` em `interfaces/ui/pages/<entidade>/`.
 
-Componentes reutilizáveis (`interfaces/ui/component`): `LucideIcon` (ícones Lucide), `StatCard` (KPI), `DocumentField` (campo com máscara de CPF/RG), `RichTextEditor` com `RichTextSanitizer` (sanitização OWASP do HTML).
+Componentes reutilizáveis (`interfaces/ui/component`): `LucideIcon` (ícones Lucide), `StatCard` (KPI), `DocumentField` (campo com máscara de CPF/RG), `RichTextEditor` com `RichTextSanitizer` (sanitização OWASP do HTML), `AppFooter` (rodapé do drawer com ano, endereço do servidor e timer) e `SessionTimer`.
+
+O `MainLayout` tem um rodapé (`AppFooter`) fixo na base do drawer exibindo o ano atual, o endereço (IP/hostname) da instância que atendeu a requisição — via `ServerInfoProvider`, útil para achar logs quando há mais de uma instância atrás do balanceador — e um `SessionTimer` com contagem regressiva ao vivo. O timer roda no client (JS) e é reiniciado a cada atividade do usuário (mouse, teclado, scroll, toque). Faltando 5 min (`SESSION_WARNING_MINUTES`) abre um aviso; ao confirmar, o tempo é reiniciado. Ao zerar, um diálogo bloqueante faz logout. A sessão dura 60 min sem atividade (`SESSION_TIMEOUT_MINUTES`), controlada por `server.servlet.session.timeout` com `vaadin.close-idle-sessions=true` (senão os heartbeats do Vaadin manteriam a sessão viva para sempre).
 
 ## Testes
 

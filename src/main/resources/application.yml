@@ -44,6 +44,17 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  servlet:
+    session:
+      # Sessão expira após este período sem atividade do usuário (inatividade)
+      timeout: ${SESSION_TIMEOUT_MINUTES:60}m
+
+vaadin:
+  # Fecha sessões ociosas: sem esta flag, os heartbeats do Vaadin mantêm a
+  # sessão HTTP viva indefinidamente e o timeout por inatividade nunca ocorre.
+  close-idle-sessions: true
+  # Intervalo do heartbeat em segundos (deve ser menor que o timeout da sessão)
+  heartbeat-interval: 300
 
 logging:
   level:
@@ -60,6 +71,12 @@ rh-system:
   ativacao-token-validade-horas: ${ATIVACAO_TOKEN_HORAS:24}
   # Diretório onde os anexos dos usuários serão armazenados
   storage-dir: ${STORAGE_DIR:./storage/documentos}
+  # Sessão do usuário (timer exibido no footer + aviso de expiração)
+  session:
+    # Tempo de vida da sessão sem atividade, em minutos
+    timeout-minutes: ${SESSION_TIMEOUT_MINUTES:60}
+    # Antecedência (em minutos) com que o aviso de expiração é exibido
+    warning-minutes: ${SESSION_WARNING_MINUTES:5}
   # Cache distribuído (Hazelcast embedded — sincronizado entre instâncias)
   cache:
     # Instâncias com o mesmo cluster-name formam um cluster e compartilham o cache

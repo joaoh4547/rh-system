@@ -2,6 +2,10 @@ package com.rhsystem.interfaces.ui;
 
 import com.rhsystem.application.usecase.usuario.GetUserByUserName;
 import com.rhsystem.domain.model.usuario.User;
+import com.rhsystem.infrastructure.config.RhSystemProperties;
+import com.rhsystem.infrastructure.config.ServerInfoProvider;
+import com.rhsystem.interfaces.ui.component.AppFooter;
+import com.rhsystem.interfaces.ui.component.SessionTimer;
 import com.rhsystem.interfaces.ui.pages.groups.GroupPage;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
@@ -30,10 +34,17 @@ public class MainLayout extends AppLayout {
 
     private final AuthenticationContext authContext;
     private final GetUserByUserName getUserByUserName;
+    private final ServerInfoProvider serverInfoProvider;
+    private final RhSystemProperties properties;
 
-    public MainLayout(AuthenticationContext authContext, GetUserByUserName getUserByUserName) {
+    public MainLayout(AuthenticationContext authContext,
+                      GetUserByUserName getUserByUserName,
+                      ServerInfoProvider serverInfoProvider,
+                      RhSystemProperties properties) {
         this.authContext = authContext;
         this.getUserByUserName = getUserByUserName;
+        this.serverInfoProvider = serverInfoProvider;
+        this.properties = properties;
         setPrimarySection(Section.DRAWER);
         addHeaderContent();
         addDrawerContent();
@@ -108,7 +119,14 @@ public class MainLayout extends AppLayout {
 
         nav.addItem(tools, config, security);
 
-        addToDrawer(brand, userPanel, caption, nav);
+        RhSystemProperties.Session session = properties.getSession();
+        SessionTimer sessionTimer = new SessionTimer(
+                session.getTimeoutMinutes(),
+                session.getWarningMinutes(),
+                authContext::logout);
+        AppFooter footer = new AppFooter(serverInfoProvider.getServerAddress(), sessionTimer);
+
+        addToDrawer(brand, userPanel, caption, nav, footer);
     }
 
     private User loadUser(){
