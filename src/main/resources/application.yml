@@ -52,9 +52,11 @@ server:
 vaadin:
   # Fecha sessões ociosas: sem esta flag, os heartbeats do Vaadin mantêm a
   # sessão HTTP viva indefinidamente e o timeout por inatividade nunca ocorre.
-  close-idle-sessions: true
+  # Obs.: são parâmetros do servlet Vaadin (camelCase); o IDE pode marcar como
+  # "propriedade desconhecida" por não haver metadata, mas funcionam normalmente.
+  closeIdleSessions: true
   # Intervalo do heartbeat em segundos (deve ser menor que o timeout da sessão)
-  heartbeat-interval: 300
+  heartbeatInterval: 300
 
 logging:
   level:

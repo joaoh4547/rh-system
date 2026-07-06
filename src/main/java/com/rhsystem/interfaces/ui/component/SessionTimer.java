@@ -14,7 +14,9 @@ import com.vaadin.flow.component.icon.VaadinIcon;
  * Live session countdown displayed in the footer.
  *
  * <p>The countdown is driven <b>client-side</b> for a smooth per-second display
- * and reset on any user activity (mouse, keyboard, scroll, touch). It calls back
+ * and reset on real user activity — clicks, keystrokes, scroll and touch. Bare
+ * mouse movement is intentionally ignored, so the timer keeps ticking down while
+ * the pointer merely hovers. It calls back
  * to the server at three moments:</p>
  * <ul>
  *   <li>{@link #keepAlive()} — throttled (once per minute) on activity, so the
@@ -45,7 +47,7 @@ public class SessionTimer extends Span {
                 const now = Date.now();
                 if (now - lastPing > 60000) { lastPing = now; el.$server.keepAlive(); }
             };
-            const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+            const events = ['scroll', 'touchstart', 'click'];
             events.forEach(ev => document.addEventListener(ev, onActivity, { passive: true }));
             if (el.__sessionInterval) clearInterval(el.__sessionInterval);
             el.__sessionInterval = setInterval(() => {

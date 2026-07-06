@@ -125,8 +125,12 @@ public class MainLayout extends AppLayout {
                 session.getWarningMinutes(),
                 authContext::logout);
         AppFooter footer = new AppFooter(serverInfoProvider.getServerAddress(), sessionTimer);
+        // Adicionado ao slot da navbar (sem transform) e fixado no rodapé da
+        // página via CSS (position: fixed). O drawer usa transform para deslizar,
+        // o que quebraria o position: fixed se o footer ficasse dentro dele.
+        addToNavbar(footer);
 
-        addToDrawer(brand, userPanel, caption, nav, footer);
+        addToDrawer(brand, userPanel, caption, nav);
     }
 
     private User loadUser(){

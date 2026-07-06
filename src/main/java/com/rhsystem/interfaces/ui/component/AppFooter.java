@@ -18,7 +18,7 @@ public class AppFooter extends Footer {
     public AppFooter(String serverAddress, SessionTimer sessionTimer) {
         addClassName("app-footer");
 
-        Span copyright = new Span(getTranslation("footer.copyright", Year.now().getValue()));
+        Span copyright = new Span(getTranslation("footer.copyright", String.valueOf(Year.now().getValue())));
         copyright.addClassName("footer-copyright");
 
         Span server = new Span(getTranslation("footer.server", serverAddress));
