@@ -37,14 +37,14 @@ class CommandValidatorTest {
     void validCommandProducesNoViolations() {
         CreateUserCommand cmd = new CreateUserCommand(
                 "João", "Silva", "joao@example.com",
-                "529.982.247-25", "123456789", null, null);
+                "529.982.247-25", "123456789", null, null, null);
         assertFalse(commandValidator.check(cmd).hasErrors());
     }
 
     @Test
     void blankCommandCollectsAllViolationsAtOnce() {
         CreateUserCommand cmd = new CreateUserCommand(
-                " ", null, "not-an-email", "111.111.111-11", "", null, null);
+                " ", null, "not-an-email", "111.111.111-11", "", null, null, null);
 
         ValidationResult result = commandValidator.check(cmd);
         List<String> keys = result.violations().stream().map(Violation::messageKey).toList();
@@ -60,7 +60,7 @@ class CommandValidatorTest {
     void maskedValidCpfIsAccepted() {
         CreateUserCommand cmd = new CreateUserCommand(
                 "Ana", "Souza", "ana@example.com",
-                "529.982.247-25", "MG1234567", null, null);
+                "529.982.247-25", "MG1234567", null, null, null);
         assertFalse(commandValidator.check(cmd).hasErrors());
     }
 

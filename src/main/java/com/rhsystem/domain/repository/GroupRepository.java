@@ -4,11 +4,19 @@ import com.rhsystem.domain.model.Sorting;
 import com.rhsystem.domain.model.grupo.Group;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface GroupRepository {
 
     Collection<Group> findAllPaginated(int limit, int offset,Collection<Sorting> sorting);
+
+    List<Group> findAll();
+
+    /** Returns only active groups — the universe offered by selection widgets. */
+    List<Group> findAllActive();
+
+    List<Group> findAllById(Collection<Long> ids);
 
     long count();
     long countActive();

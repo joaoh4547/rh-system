@@ -4,10 +4,13 @@ import com.rhsystem.application.dto.usuario.UpdateUserCommand;
 import com.rhsystem.application.exception.BusinessException;
 import com.rhsystem.application.validation.CommandValidator;
 import com.rhsystem.domain.model.usuario.User;
+import com.rhsystem.domain.repository.GroupRepository;
 import com.rhsystem.domain.repository.UserRepository;
 import com.rhsystem.domain.service.CpfValidator;
 import com.rhsystem.domain.validation.ValidationResult;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,10 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class UpdateUser {
 
     private final UserRepository userRepository;
+    private final GroupRepository groupRepository;
     private final CommandValidator commandValidator;
 
-    public UpdateUser(UserRepository userRepository, CommandValidator commandValidator) {
+    public UpdateUser(UserRepository userRepository, GroupRepository groupRepository,
+                      CommandValidator commandValidator) {
         this.userRepository = userRepository;
+        this.groupRepository = groupRepository;
         this.commandValidator = commandValidator;
     }
 
@@ -54,6 +60,8 @@ public class UpdateUser {
         user.setRg(rg);
         user.setStatus(cmd.status());
         user.setAddress(UserSupport.toAddress(cmd.address()));
+        user.setGroups(new ArrayList<>(groupRepository.findAllById(
+                cmd.groupIds() == null ? Set.of() : cmd.groupIds())));
         user.setUpdatedAt(LocalDateTime.now());
         return userRepository.save(user);
     }

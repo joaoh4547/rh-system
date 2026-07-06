@@ -5,6 +5,7 @@ import com.rhsystem.domain.model.usuario.UserStatus;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.util.Set;
 
 /**
  * Command for updating an existing user.
@@ -36,6 +37,7 @@ public record UpdateUserCommand(
         @NotNull(message = "error.user.status.required")
         UserStatus status,
 
-        AddressDTO address
+        AddressDTO address,
+        Set<Long> groupIds
 ) {
 }

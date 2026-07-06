@@ -1,7 +1,10 @@
 package com.rhsystem.interfaces.ui.pages.usuario;
 
+import com.rhsystem.domain.model.grupo.Group;
 import com.rhsystem.domain.model.usuario.UserStatus;
 import com.rhsystem.domain.model.usuario.User;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -25,6 +28,8 @@ public class UserFormModel {
     private String complement;
     private String postalCode;
 
+    private Set<Group> groups = new HashSet<>();
+
     /** Creates the model from an existing user (edit mode). */
     public static UserFormModel from(User u) {
         UserFormModel m = new UserFormModel();
@@ -34,6 +39,7 @@ public class UserFormModel {
         m.cpf = u.getCpf();
         m.rg = u.getRg();
         m.status = u.getStatus();
+        m.groups = new HashSet<>(u.getGroups());
         if (u.getAddress() != null) {
             m.street = u.getAddress().getStreet();
             m.neighborhood = u.getAddress().getNeighborhood();

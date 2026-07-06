@@ -1,5 +1,6 @@
 package com.rhsystem.interfaces.ui.pages.usuario;
 
+import com.rhsystem.application.usecase.group.ListGroups;
 import com.rhsystem.application.usecase.usuario.*;
 import com.rhsystem.domain.model.Sorting;
 import com.rhsystem.domain.model.usuario.User;
@@ -41,17 +42,23 @@ public class UserPage extends BasePage<User> {
     private final UpdateUser updateUser;
     private final RemoveUser removeUser;
     private final GetUserSummary getUserSummary;
+    private final GetUser getUser;
+    private final ListGroups listGroups;
 
     public UserPage(ListUsers listUsers,
                     CreateUser createUser,
                     UpdateUser updateUser,
                     RemoveUser removeUser,
-                    GetUserSummary getUserSummary) {
+                    GetUserSummary getUserSummary,
+                    GetUser getUser,
+                    ListGroups listGroups) {
         this.listUsers = listUsers;
         this.createUser = createUser;
         this.updateUser = updateUser;
         this.removeUser = removeUser;
         this.getUserSummary = getUserSummary;
+        this.getUser = getUser;
+        this.listGroups = listGroups;
     }
 
     @Override
@@ -106,7 +113,10 @@ public class UserPage extends BasePage<User> {
 
     @Override
     protected Dialog buildForm(@Nullable User user) {
-        return new UserFormDialog(createUser, updateUser, user, this::refresh);
+        // Reload with the groups collection fetched: the grid row is a detached
+        // entity, reading its lazy groups here would throw LazyInitializationException.
+        User editing = user == null ? null : getUser.execute(user.getId());
+        return new UserFormDialog(createUser, updateUser, editing, listGroups.executeActive(), this::refresh);
     }
 
     @Override
