@@ -47,7 +47,7 @@ server:
   servlet:
     session:
       # Sessão expira após este período sem atividade do usuário (inatividade)
-      timeout: ${SESSION_TIMEOUT_MINUTES:60}m
+      timeout: ${SESSION_TIMEOUT_MINUTES:6}m
 
 vaadin:
   # Fecha sessões ociosas: sem esta flag, os heartbeats do Vaadin mantêm a
@@ -76,7 +76,7 @@ rh-system:
   # Sessão do usuário (timer exibido no footer + aviso de expiração)
   session:
     # Tempo de vida da sessão sem atividade, em minutos
-    timeout-minutes: ${SESSION_TIMEOUT_MINUTES:60}
+    timeout-minutes: ${SESSION_TIMEOUT_MINUTES:6}
     # Antecedência (em minutos) com que o aviso de expiração é exibido
     warning-minutes: ${SESSION_WARNING_MINUTES:5}
   # Cache distribuído (Hazelcast embedded — sincronizado entre instâncias)

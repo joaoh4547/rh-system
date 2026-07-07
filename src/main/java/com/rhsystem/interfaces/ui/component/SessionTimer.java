@@ -5,7 +5,6 @@ import com.vaadin.flow.component.ClientCallable;
 import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -15,20 +14,27 @@ import com.vaadin.flow.component.icon.VaadinIcon;
  *
  * <p>The countdown is driven <b>client-side</b> for a smooth per-second display
  * and reset on real user activity — clicks, keystrokes, scroll and touch. Bare
- * mouse movement is intentionally ignored, so the timer keeps ticking down while
- * the pointer merely hovers. It calls back
- * to the server at three moments:</p>
+ * mouse movement is intentionally ignored (so the timer keeps ticking while the
+ * pointer merely hovers), and interactions <i>inside</i> a dialog overlay are
+ * ignored too (so closing the warning doesn't count as activity). It calls back
+ * to the server at these moments:</p>
  * <ul>
  *   <li>{@link #keepAlive()} — throttled (once per minute) on activity, so the
  *       HTTP session on the server is refreshed while the user is active;</li>
  *   <li>{@link #showWarning()} — when only {@code warningMinutes} remain, opening
- *       a confirmation dialog that resets the timer if the user chooses to stay;</li>
+ *       a <b>non-modal</b> warning. "Continuar" resets the timer; "Fechar"/Esc just
+ *       dismisses it and lets the countdown continue to expiration;</li>
+ *   <li>{@link #closeWarning()} — when the user resumes real work, the pending
+ *       warning is dismissed and the timer resets;</li>
  *   <li>{@link #expire()} — when the countdown reaches zero, opening a blocking
  *       dialog whose only action logs the user out.</li>
  * </ul>
  *
- * <p>The server-side session timeout ({@code server.servlet.session.timeout}) acts
- * as the authoritative backstop; this component provides the UX around it.</p>
+ * <p>Why the warning is <b>non-modal</b>: a modal dialog makes the rest of the UI
+ * inert on the server, which would swallow this component's {@code expire()} RPC —
+ * the session would hit zero and nothing would happen. Keeping it non-modal lets
+ * the countdown keep driving the server. The server-side session timeout
+ * ({@code server.servlet.session.timeout}) is the authoritative backstop.</p>
  */
 public class SessionTimer extends Span {
 
@@ -40,22 +46,43 @@ public class SessionTimer extends Span {
             const fmt = s => { s = s > 0 ? s : 0; const m = Math.floor(s / 60), ss = s % 60;
                 return (m < 10 ? '0' : '') + m + ':' + (ss < 10 ? '0' : '') + ss; };
             const render = () => { if (valueEl) valueEl.textContent = fmt(remaining); };
-            el.__sessionReset = () => { remaining = total; warned = false; render(); };
+            const tick = () => {
+                remaining--;
+                if (remaining <= warnAt && !warned) { warned = true; el.$server.showWarning(); }
+                if (remaining <= 0) {
+                    clearInterval(el.__sessionInterval); el.__sessionInterval = null;
+                    render(); el.$server.expire(); return;
+                }
+                render();
+            };
+            const startTick = () => {
+                if (el.__sessionInterval) clearInterval(el.__sessionInterval);
+                el.__sessionInterval = setInterval(tick, 1000);
+            };
+            // Reset chamado pelo servidor (botão "Continuar"): volta ao tempo cheio
+            // e RELIGA a contagem (o intervalo pode ter sido parado ao zerar).
+            el.__sessionReset = () => { remaining = total; warned = false; render(); startTick(); };
             let lastPing = Date.now();
-            const onActivity = () => {
-                remaining = total; warned = false; render();
+            // Ignora eventos originados dentro de um dialog (botões do aviso/expiração),
+            // para que "Fechar" não conte como atividade e não reinicie o timer.
+            // Usa composedPath() para enxergar através do shadow DOM/slot do overlay
+            // (closest() não atravessa essa fronteira e falharia nos botões do dialog).
+            const inOverlay = e => {
+                const path = (e && e.composedPath) ? e.composedPath() : [];
+                return path.some(n => n && n.nodeType === 1 && n.localName
+                    && n.localName.endsWith('-overlay'));
+            };
+            const onActivity = e => {
+                if (inOverlay(e)) return;
+                const wasWarned = warned;
+                remaining = total; warned = false; render(); startTick();
+                if (wasWarned) el.$server.closeWarning();
                 const now = Date.now();
                 if (now - lastPing > 60000) { lastPing = now; el.$server.keepAlive(); }
             };
-            const events = ['scroll', 'touchstart', 'click'];
+            const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
             events.forEach(ev => document.addEventListener(ev, onActivity, { passive: true }));
-            if (el.__sessionInterval) clearInterval(el.__sessionInterval);
-            el.__sessionInterval = setInterval(() => {
-                remaining--;
-                if (remaining <= warnAt && !warned) { warned = true; el.$server.showWarning(); }
-                if (remaining <= 0) { clearInterval(el.__sessionInterval); render(); el.$server.expire(); return; }
-                render();
-            }, 1000);
+            startTick();
             el.__sessionCleanup = () => {
                 if (el.__sessionInterval) clearInterval(el.__sessionInterval);
                 events.forEach(ev => document.removeEventListener(ev, onActivity));
@@ -66,6 +93,9 @@ public class SessionTimer extends Span {
     private final int timeoutSeconds;
     private final int warningSeconds;
     private final Runnable onLogout;
+
+    /** The current, non-modal warning dialog (if showing) so it can be closed later. */
+    private Dialog warningDialog;
 
     public SessionTimer(int timeoutMinutes, int warningMinutes, Runnable onLogout) {
         this.timeoutSeconds = timeoutMinutes * 60;
@@ -104,23 +134,54 @@ public class SessionTimer extends Span {
         // intentionally empty
     }
 
-    /** Opens the "about to expire" dialog; confirming restarts the client countdown. */
+    /** Opens the non-modal "about to expire" warning. */
     @ClientCallable
     public void showWarning() {
-        ConfirmDialog dialog = new ConfirmDialog();
-        dialog.setHeader(getTranslation("session.warning.title"));
-        dialog.setText(getTranslation("session.warning.message", warningSeconds / 60));
-        dialog.setConfirmText(getTranslation("session.warning.confirm"));
-        dialog.setCloseOnEsc(false);
-        dialog.addConfirmListener(e -> getElement().executeJs("if (this.__sessionReset) this.__sessionReset();"));
+        if (warningDialog != null && warningDialog.isOpened()) {
+            return;
+        }
+        Dialog dialog = new Dialog();
+        warningDialog = dialog;
+        dialog.setHeaderTitle(getTranslation("session.warning.title"));
+        // Não-modal: não bloqueia o SessionTimer, senão o expire() nunca é processado.
+        dialog.setModal(false);
+        dialog.setCloseOnEsc(true);
+        dialog.setCloseOnOutsideClick(false);
+        dialog.add(new Span(getTranslation("session.warning.message", warningSeconds / 60)));
+
+        // "Fechar"/Esc apenas dispensa o aviso; a contagem continua até expirar.
+        Button close = new Button(getTranslation("session.warning.cancel"), e -> dialog.close());
+
+        // "Continuar conectado" reinicia o timer para o tempo cheio.
+        Button stay = new Button(getTranslation("session.warning.confirm"), e -> {
+            dialog.close();
+            getElement().executeJs("if (this.__sessionReset) this.__sessionReset();");
+        });
+        stay.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        dialog.getFooter().add(close, stay);
         dialog.open();
+    }
+
+    /** Dismisses the pending warning when the user resumes activity. */
+    @ClientCallable
+    public void closeWarning() {
+        if (warningDialog != null) {
+            warningDialog.close();
+            warningDialog = null;
+        }
     }
 
     /** Opens the blocking "session expired" dialog; the only action logs out. */
     @ClientCallable
     public void expire() {
+        if (warningDialog != null) {
+            warningDialog.close();
+            warningDialog = null;
+        }
         Dialog dialog = new Dialog();
         dialog.setHeaderTitle(getTranslation("session.expired.title"));
+        dialog.setModal(true);
         dialog.setCloseOnEsc(false);
         dialog.setCloseOnOutsideClick(false);
         dialog.add(new Span(getTranslation("session.expired.message")));
