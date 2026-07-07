@@ -173,7 +173,7 @@ Entity-specific notes: `UserForm` collects document uploads exposed as `getAttac
 
 ### Components (`interfaces/ui/component`)
 
-- **`LucideIcon`** — Lucide icon component with static factories (`edit`, `delete`, `add`, `check`, `lock`, `unLock`, `functionalities`, `chevronRight`, `chevronLeft`, `chevronsRight`, `chevronsLeft`).
+- **`LucideIcon`** — Lucide icon component with static factories (`edit`, `delete`, `add`, `check`, `lock`, `unLock`, `functionalities`).
 - **`StatCard(label, value, VaadinIcon, Accent)`** — KPI card; `Accent`: PRIMARY, SUCCESS, WARNING, DANGER.
 - **`DocumentField`** — masked `TextField` for `Type.CPF`/`Type.RG` with `getDigits()`/`setDigits()`.
 - **`Shuttle<T>`** — dual-list ("shuttle"/transfer list) multi-select field, `CustomField<Set<T>>` so it binds like any other field. Two styled panels (available/chosen), each with a header (caption + item-count badge), an eager filter `TextField` and an empty-state hint, plus `>`/`<`/`>>`/`<<` move buttons with tooltips, auto enabled/disabled by selection/content. Styling via `.shuttle-*` classes in `styles.css`; i18n keys `shuttle.*`. `setItems(Collection<T>)` sets the universe, `setItemLabelGenerator`, `setCaptions(availableLabel, chosenLabel)` for the panel headers. Exposed via `Form.shuttle(label, property, items, labelGenerator)`.

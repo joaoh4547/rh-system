@@ -132,6 +132,56 @@ vaadin-app-layout::part(drawer) {
 
 .app-nav { padding: 0 var(--lumo-space-s) var(--lumo-space-s); }
 
+/* ====================================================================
+   FOOTER (barra fixa no rodapé da página): ano + servidor + timer
+   ==================================================================== */
+.app-footer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--lumo-space-m);
+    padding: .35rem var(--lumo-space-l);
+    background: #ffffff;
+    border-top: 1px solid #e5e7eb;
+    box-shadow: 0 -1px 2px rgba(16, 24, 40, .04);
+    font-size: var(--lumo-font-size-xxs);
+}
+/* Desloca a barra pela largura da sidebar quando o drawer está aberto (desktop) */
+vaadin-app-layout[drawer-opened]:not([overlay]) .app-footer { left: 256px; }
+
+/* Impede que a barra fixa cubra o final do conteúdo */
+vaadin-app-layout::part(content) { padding-bottom: 2.75rem; }
+
+.footer-info { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+.footer-copyright { color: #475569; font-weight: 600; white-space: nowrap; }
+.footer-server {
+    color: #64748b;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.footer-server::before { content: "•"; margin-right: .5rem; color: #cbd5e1; }
+
+.session-timer {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .25rem .55rem;
+    background: #f1f5f9;
+    border: 1px solid #e5e7eb;
+    border-radius: var(--lumo-border-radius-s);
+    color: #334155;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.session-timer-icon { display: inline-flex; }
+.session-timer-icon vaadin-icon { width: .9rem; height: .9rem; color: var(--brand-500); }
+.session-timer-label { color: #64748b; }
+.session-timer-value { color: #0f172a; font-variant-numeric: tabular-nums; letter-spacing: .5px; }
+
 /* Itens compactos. A cor do texto no Vaadin 25 vem da custom property
    --vaadin-side-nav-item-text-color (o link/rótulo herda dela). */
 /* Cor do texto FIXA em qualquer estado (hover, atual, expandido...).

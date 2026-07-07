@@ -29,6 +29,20 @@ public class RhSystemProperties {
     /** Distributed cache (Hazelcast) settings. */
     private final Cache cache = new Cache();
 
+    /** User session settings (inactivity timer shown in the footer). */
+    private final Session session = new Session();
+
+    @Getter
+    @Setter
+    public static class Session {
+
+        /** Session lifetime without user activity, in minutes. */
+        private int timeoutMinutes = 60;
+
+        /** How many minutes before expiration the warning dialog is shown. */
+        private int warningMinutes = 5;
+    }
+
     @Getter
     @Setter
     public static class Cache {
