@@ -5,8 +5,10 @@ import com.rhsystem.domain.model.usuario.User;
 import com.rhsystem.infrastructure.config.RhSystemProperties;
 import com.rhsystem.infrastructure.config.ServerInfoProvider;
 import com.rhsystem.interfaces.ui.component.AppFooter;
+import com.rhsystem.interfaces.ui.component.LucideIcon;
 import com.rhsystem.interfaces.ui.component.SessionTimer;
 import com.rhsystem.interfaces.ui.pages.groups.GroupPage;
+import com.rhsystem.interfaces.ui.pages.parameters.ParameterPage;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.avatar.Avatar;
@@ -101,23 +103,17 @@ public class MainLayout extends AppLayout {
         SideNav nav = new SideNav();
         nav.addClassName("app-nav");
 
-        // Grupo: Ferramentas
-        SideNavItem tools = new SideNavItem("Ferramentas");
-        tools.setPrefixComponent(VaadinIcon.TOOLS.create());
-        tools.addItem(new SideNavItem("Editor de Texto", RichTextEditorDemoPage.class, VaadinIcon.EDIT.create()));
 
-        // Grupo: Configurações (itens de exemplo, sem rota ainda)
         SideNavItem config = new SideNavItem(getTranslation("nav.section.settings"));
-        config.setPrefixComponent(VaadinIcon.COG.create());
-        config.addItem(new SideNavItem(getTranslation("nav.menu.profiles")));
-        config.addItem(new SideNavItem(getTranslation("nav.menu.parameters")));
+        config.setPrefixComponent(LucideIcon.config());
+        config.addItem(new SideNavItem(getTranslation("nav.menu.parameters"), ParameterPage.class, LucideIcon.parameters()));
 
         SideNavItem security = new SideNavItem(getTranslation("nav.section.security"));
-        security.setPrefixComponent(VaadinIcon.LOCK.create());
-        security.addItem(new SideNavItem(getTranslation("nav.menu.groups"), GroupPage.class, VaadinIcon.GROUP.create()));
-        security.addItem(new SideNavItem(getTranslation("nav.menu.users"), UserPage.class, VaadinIcon.USER.create()));
+        security.setPrefixComponent(LucideIcon.security());
+        security.addItem(new SideNavItem(getTranslation("nav.menu.groups"), GroupPage.class, LucideIcon.users()));
+        security.addItem(new SideNavItem(getTranslation("nav.menu.users"), UserPage.class, LucideIcon.user()));
 
-        nav.addItem(tools, config, security);
+        nav.addItem(config, security);
 
         RhSystemProperties.Session session = properties.getSession();
         SessionTimer sessionTimer = new SessionTimer(
@@ -125,15 +121,12 @@ public class MainLayout extends AppLayout {
                 session.getWarningMinutes(),
                 authContext::logout);
         AppFooter footer = new AppFooter(serverInfoProvider.getServerAddress(), sessionTimer);
-        // Adicionado ao slot da navbar (sem transform) e fixado no rodapé da
-        // página via CSS (position: fixed). O drawer usa transform para deslizar,
-        // o que quebraria o position: fixed se o footer ficasse dentro dele.
         addToNavbar(footer);
 
         addToDrawer(brand, userPanel, caption, nav);
     }
 
-    private User loadUser(){
+    private User loadUser() {
         String username = authContext.getPrincipalName().orElse(null);
         return getUserByUserName.execute(username);
     }

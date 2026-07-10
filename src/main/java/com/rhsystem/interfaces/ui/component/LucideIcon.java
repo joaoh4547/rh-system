@@ -93,4 +93,32 @@ public class LucideIcon extends Component implements HasStyle, HasSize {
     public static LucideIcon chevronsLeft(){
         return new LucideIcon("ChevronsLeft");
     }
+
+    public static LucideIcon users(){
+        return new LucideIcon("Users");
+    }
+
+    public static LucideIcon config(){
+        return new LucideIcon("Settings");
+    }
+
+    public static LucideIcon security(){
+        return new LucideIcon("Lock");
+    }
+
+    public static LucideIcon user(){
+        return new LucideIcon("User");
+    }
+
+    public static LucideIcon userSquare(){
+        return new LucideIcon("SquareUserRound");
+    }
+
+    public static LucideIcon parameters(){
+        return new LucideIcon("MonitorCog");
+    }
+
+    public static LucideIcon restore(){
+        return new LucideIcon("RotateCcw");
+    }
 }
