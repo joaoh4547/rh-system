@@ -15,13 +15,17 @@ public class StatCard extends Div {
     public enum Accent { PRIMARY, SUCCESS, WARNING, DANGER }
 
     public StatCard(String label, Number value, VaadinIcon icon, Accent accent) {
+        this(label, String.valueOf(value), icon, accent);
+    }
+
+    public StatCard(String label, String value, VaadinIcon icon, Accent accent) {
         addClassName("stat-card");
         addClassName("accent-" + accent.name().toLowerCase());
 
         Icon ic = icon.create();
         ic.addClassName("stat-icon");
 
-        Span valueSpan = new Span(String.valueOf(value));
+        Span valueSpan = new Span(value);
         valueSpan.addClassName("stat-value");
 
         Span labelSpan = new Span(label);

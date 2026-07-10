@@ -98,6 +98,12 @@ Campos: nome, sobrenome, username, email, senha, status, CPF, RG, endereço (log
 - Grupos **não são excluídos** — são desativados/reativados (com diálogo de confirmação). Só grupos ativos podem ser editados.
 - KPIs na tela: total e ativos.
 
+### Gerenciamento de Cache
+
+- Visualização do consumo de memória e número de entradas por cache (Hazelcast IMap).
+- Operações de limpeza individual (`ClearCache`) ou limpeza global (`Global flush`).
+- Acesso restrito via `CachePage`.
+
 ## Segurança e Permissões
 
 - Spring Security integrado ao Vaadin via `VaadinSecurityConfigurer`; views exigem autenticação por padrão, e as públicas (login, ativação, esqueci/redefinir senha) usam `@AnonymousAllowed`.

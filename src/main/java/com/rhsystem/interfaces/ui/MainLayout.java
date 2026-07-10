@@ -7,6 +7,7 @@ import com.rhsystem.infrastructure.config.ServerInfoProvider;
 import com.rhsystem.interfaces.ui.component.AppFooter;
 import com.rhsystem.interfaces.ui.component.LucideIcon;
 import com.rhsystem.interfaces.ui.component.SessionTimer;
+import com.rhsystem.interfaces.ui.pages.cache.CachePage;
 import com.rhsystem.interfaces.ui.pages.groups.GroupPage;
 import com.rhsystem.interfaces.ui.pages.parameters.ParameterPage;
 import com.vaadin.flow.component.applayout.AppLayout;
@@ -107,6 +108,7 @@ public class MainLayout extends AppLayout {
         SideNavItem config = new SideNavItem(getTranslation("nav.section.settings"));
         config.setPrefixComponent(LucideIcon.config());
         config.addItem(new SideNavItem(getTranslation("nav.menu.parameters"), ParameterPage.class, LucideIcon.parameters()));
+        config.addItem(new SideNavItem(getTranslation("nav.menu.cache"), CachePage.class, LucideIcon.cache()));
 
         SideNavItem security = new SideNavItem(getTranslation("nav.section.security"));
         security.setPrefixComponent(LucideIcon.security());
