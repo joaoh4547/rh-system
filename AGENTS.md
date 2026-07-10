@@ -116,6 +116,7 @@ Groups are never deleted — they are disabled (`GroupPage.remove()` is intentio
 - **`FileStorage.store(content, fileName)`** → implemented by `LocalFileStorage`: writes to `rh-system.storage-dir`, filename `UUID_sanitizedName`, returns the path stored in `Document.storagePath`.
 - **`UserNotifier.sendActivation/sendPasswordReset(user, token)`** → implemented by `EmailUserNotifier`: `SimpleMailMessage` in pt-BR, subject from i18n (`email.activation.subject`, `email.reset.subject`), links `${base-url}/activate/{token}` and `${base-url}/reset-password/{token}`.
 - **`AccessManager.hasAccess/hasAccessAny/hasAccessAll(Functionality...)`** → implemented by `AppAccessManager` (reads the authenticated user via Vaadin `AuthenticationContext` + `UserRepository`).
+- **`CacheManagementPort`** → `HazelcastCacheManagementAdapter`: provides `getCacheStats` (entry counts) and `clearCache`/`clearAllCaches` (Hazelcast `IMap.clear`).
 
 ## Security & Permissions
 
