@@ -17,7 +17,7 @@ public class EnableGroup {
     @Transactional
     public void execute(EnableGroupCommand cmd){
         Group group = groupRepository.findById(cmd.groupId()).orElseThrow(() -> new BusinessException("error.group.not.found"));
-        group.setActive(cmd.enable());
+        group.setEnable(cmd.enable());
         groupRepository.save(group);
     }
 }

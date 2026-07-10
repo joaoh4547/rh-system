@@ -18,9 +18,6 @@ public class GroupGrid extends ActionsGrid<Group> {
     protected void configColumns() {
         addColumn("name").setHeader(getTranslation("col.name"));
         addColumn("description").setHeader(getTranslation("col.description"));
-        booleanColumn("active", Group::isActive).setHeader(getTranslation("col.active")).setWidth("50px");
-
-        setPartNameGenerator(g -> !g.isActive()? "inactive-row" : "");
     }
 
     @Override

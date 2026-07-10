@@ -113,7 +113,7 @@ public class GroupPage extends BasePage<Group> {
 
     @Override
     public boolean canEdit(Group obj) {
-        return obj.isActive();
+        return obj.isEnable();
     }
 
     @Override
@@ -129,29 +129,13 @@ public class GroupPage extends BasePage<Group> {
         return actions;
     }
 
-    private ObjectAction<Group> createDisableAction() {
-        return ObjectAction.<Group>builder()
-                .label(getTranslation("action.disable"))
-                .icon(LucideIcon::lock)
-                .handler(x -> createEnable(false, x).open())
-                .visible(Group::isActive)
-                .build();
-    }
 
-    public ObjectAction<Group> createEnableAction() {
-        return ObjectAction.<Group>builder()
-                .label(getTranslation("action.enable"))
-                .icon(LucideIcon::unLock)
-                .handler(x -> createEnable(true, x).open())
-                .visible(g -> !g.isActive())
-                .build();
-    }
 
-    private void enable(Group group) {
+    protected void enable(Group group) {
         enableGroup.execute(new EnableGroupCommand(group.getId(), true));
     }
 
-    private void disable(Group group) {
+    protected void disable(Group group) {
         enableGroup.execute(new EnableGroupCommand(group.getId(), false));
     }
 
@@ -161,16 +145,6 @@ public class GroupPage extends BasePage<Group> {
         return getTranslation("masc.article");
     }
 
-    private EnableDialog<Group> createEnable(boolean enable, Group obj) {
-        return new EnableDialog<>(obj, (g) -> {
-            if (enable) {
-                enable(g);
-            } else {
-                disable(g);
-            }
-            refresh();
-        }, Group::getName, "Grupo", getEntityArticle(), enable);
-    }
 
 
 

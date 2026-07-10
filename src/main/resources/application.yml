@@ -90,3 +90,6 @@ rh-system:
     port: ${HZ_PORT:5701}
     # Validade das entradas do cache em segundos
     ttl-seconds: ${CACHE_TTL_SECONDS:600}
+    debug-resolve-groups: ${CACHE_DEBUG_RESOLVE_GROUPS:false}
+  aes:
+    key: ${AES_KEY:}

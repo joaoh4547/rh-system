@@ -26,7 +26,7 @@ public class GroupFormModel {
         GroupFormModel model = new GroupFormModel();
         model.setName(group.getName());
         model.setDescription(group.getDescription());
-        model.setActive(group.isActive());
+        model.setActive(group.isEnable());
         model.setAdmin(group.isAdmin());
         model.setFunctionalities(new HashSet<>(group.getFunctionalities()));
         return model;

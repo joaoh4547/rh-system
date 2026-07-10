@@ -19,7 +19,7 @@ public class UpdateGroup {
         Group group = groupRepository.findByIdWithFunctionalities(command.id()).orElseThrow(() -> new BusinessException("error.group.not.found"));
         group.setName(command.name());
         group.setDescription(command.description());
-        group.setActive(command.active());
+        group.setEnable(command.active());
         group.setAdmin(command.admin());
 
         group.getFunctionalities().clear();

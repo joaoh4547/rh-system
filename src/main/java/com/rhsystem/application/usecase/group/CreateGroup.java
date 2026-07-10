@@ -26,7 +26,7 @@ public class CreateGroup {
     return Group.builder()
             .name(cmd.name())
             .description(cmd.description())
-            .active(cmd.active())
+            .enable(cmd.active())
             .admin(cmd.admin())
             .functionalities(cmd.functionalities())
             .build();

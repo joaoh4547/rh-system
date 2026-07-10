@@ -2,6 +2,8 @@ package com.rhsystem.domain.model.usuario;
 
 import com.rhsystem.domain.model.Functionality;
 import com.rhsystem.domain.model.grupo.Group;
+import com.rhsystem.infrastructure.config.CacheConfig;
+import com.rhsystem.utils.CacheEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -28,6 +30,7 @@ import java.util.*;
 @Getter
 @Setter
 @NoArgsConstructor
+@CacheEntity(cacheName = CacheConfig.USERS)
 public class User implements Serializable {
 
     @Serial
@@ -146,7 +149,7 @@ public class User implements Serializable {
             func.addAll(List.of(Functionality.values()));
         } else {
             func.addAll(this.functionalities);
-            groups.stream().filter(Group::isActive).forEach(g -> func.addAll(g.getFunctionalities()));
+            groups.stream().filter(Group::isEnable).forEach(g -> func.addAll(g.getFunctionalities()));
         }
         return func;
     }

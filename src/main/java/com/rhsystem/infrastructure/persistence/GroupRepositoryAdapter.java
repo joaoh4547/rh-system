@@ -45,7 +45,7 @@ public class GroupRepositoryAdapter implements GroupRepository {
     @Override
     @Cacheable(cacheNames = CacheConfig.GROUPS, key = "'all:active'")
     public List<Group> findAllActive() {
-        return jpa.findByActiveTrueOrderByName();
+        return jpa.findByEnableTrueOrderByName();
     }
 
     @Override
@@ -62,7 +62,7 @@ public class GroupRepositoryAdapter implements GroupRepository {
     @Override
     @Cacheable(cacheNames = CacheConfig.GROUPS, key = "'countActive'")
     public long countActive() {
-        return jpa.countByActiveTrue();
+        return jpa.countByEnableTrue();
     }
 
     @Override

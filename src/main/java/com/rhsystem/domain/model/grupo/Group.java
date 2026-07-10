@@ -1,6 +1,9 @@
 package com.rhsystem.domain.model.grupo;
 
 import com.rhsystem.domain.model.Functionality;
+import com.rhsystem.domain.model.shared.HasEnable;
+import com.rhsystem.infrastructure.config.CacheConfig;
+import com.rhsystem.utils.CacheEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -15,7 +18,8 @@ import java.util.Collection;
 @Getter
 @Setter
 @Builder
-public class Group implements Serializable {
+@CacheEntity(cacheName = CacheConfig.GROUPS)
+public class Group implements Serializable, HasEnable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -33,7 +37,7 @@ public class Group implements Serializable {
     /** Default {@code true} both for {@code new Group()} and for the builder. */
     @Builder.Default
     @Column(name = "active")
-    private boolean active = true;
+    private boolean enable = true;
 
     @Column(name = "admin")
     private boolean admin;

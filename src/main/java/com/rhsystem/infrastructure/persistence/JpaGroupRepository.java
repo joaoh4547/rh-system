@@ -8,9 +8,9 @@ import java.util.Optional;
 
 public interface JpaGroupRepository extends JpaRepository<Group, Long> {
 
-    long countByActiveTrue();
+    long countByEnableTrue();
 
-    java.util.List<Group> findByActiveTrueOrderByName();
+    java.util.List<Group> findByEnableTrueOrderByName();
 
     /**
      * Loads the full aggregate: the {@code functionalities} collection stays LAZY for
