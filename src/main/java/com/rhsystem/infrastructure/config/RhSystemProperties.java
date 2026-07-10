@@ -32,6 +32,14 @@ public class RhSystemProperties {
     /** User session settings (inactivity timer shown in the footer). */
     private final Session session = new Session();
 
+    private final Aes aes = new Aes();
+
+    @Getter
+    @Setter
+    public static class Aes {
+        private String key;
+    }
+
     @Getter
     @Setter
     public static class Session {
@@ -70,5 +78,7 @@ public class RhSystemProperties {
 
         /** Maximum entries per cache map, per node (LRU eviction beyond that). */
         private int maxSize = 5000;
+
+        private boolean debugResolveGroups = false;
     }
 }

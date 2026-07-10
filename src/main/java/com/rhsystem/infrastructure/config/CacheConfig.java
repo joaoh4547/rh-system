@@ -1,19 +1,20 @@
 package com.rhsystem.infrastructure.config;
 
-import com.hazelcast.config.Config;
-import com.hazelcast.config.EvictionConfig;
-import com.hazelcast.config.EvictionPolicy;
-import com.hazelcast.config.JoinConfig;
-import com.hazelcast.config.MapConfig;
-import com.hazelcast.config.MaxSizePolicy;
+import com.hazelcast.config.*;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.spring.cache.HazelcastCacheManager;
+import com.rhsystem.utils.CacheEntity;
+import com.rhsystem.utils.Reflections;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.Set;
 
 /**
  * Distributed cache configuration (Hazelcast embedded).
@@ -35,34 +36,58 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @EnableCaching
 @ConditionalOnBooleanProperty(name = "rh-system.cache.enabled", matchIfMissing = true)
+@Slf4j
 public class CacheConfig {
 
-    /** Cache for User aggregate queries. */
+    /**
+     * Cache for User aggregate queries.
+     */
     public static final String USERS = "users";
 
-    /** Cache for Group aggregate queries. */
+    /**
+     * Cache for Group aggregate queries.
+     */
     public static final String GROUPS = "groups";
+
+    /**
+     * Cache for Parameter aggregate queries.
+     */
+    public static final String PARAMETERS = "parameters";
+
+    @Value("${rh-system.cache.debug-resolve-groups}")
+    private boolean debugResolveGroups;
+
 
     @Bean(destroyMethod = "shutdown")
     public HazelcastInstance hazelcastInstance(RhSystemProperties properties) {
+        log.info("Configuring Hazelcast instance");
         RhSystemProperties.Cache props = properties.getCache();
 
         Config config = new Config();
         config.setClusterName(props.getClusterName());
-        // Devtools/hot-restart friendliness: deserialize with the app classloader.
         config.setClassLoader(getClass().getClassLoader());
 
         config.getNetworkConfig()
                 .setPort(props.getPort())
-                .setPortAutoIncrement(true)
-                ;
+                .setPortAutoIncrement(true);
 
         configureDiscovery(config.getNetworkConfig().getJoin(), props.getMembers());
 
-        config.addMapConfig(mapConfig(USERS, props));
-        config.addMapConfig(mapConfig(GROUPS, props));
+
+        getCacheable().forEach(clazz -> {
+            CacheEntity cacheable = Reflections.getAnnotation(CacheEntity.class, clazz);
+            var group = cacheable.cacheName();
+            if (debugResolveGroups) {
+                log.info("Configuring cache for {} using group {}", clazz, group);
+            }
+            config.addMapConfig(mapConfig(group, props));
+        });
 
         return Hazelcast.newHazelcastInstance(config);
+    }
+
+    private Set<Class<?>> getCacheable() {
+        return Reflections.getClassesWithAnnotation(CacheEntity.class);
     }
 
     @Bean
