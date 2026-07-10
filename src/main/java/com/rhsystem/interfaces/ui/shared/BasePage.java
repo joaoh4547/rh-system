@@ -1,7 +1,9 @@
 package com.rhsystem.interfaces.ui.shared;
 
 import com.rhsystem.domain.model.Sorting;
+import com.rhsystem.domain.model.shared.HasEnable;
 import com.rhsystem.domain.validation.ValidationException;
+import com.rhsystem.interfaces.ui.component.LucideIcon;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.html.Div;
@@ -15,6 +17,7 @@ import jakarta.annotation.Nullable;
 import jakarta.annotation.PostConstruct;
 
 import java.util.Collection;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 /**
@@ -72,7 +75,6 @@ public abstract class BasePage<T> extends DataEditor<T> {
         setSpacing(true);
     }
 
-    protected abstract String getEntityArticle();
 
     protected Stream<T> fetchData(Query<T, ?> query) {
         Collection<Sorting> sorting = query.getSortOrders().stream()
@@ -81,16 +83,20 @@ public abstract class BasePage<T> extends DataEditor<T> {
         return fetchResults(query.getLimit(), query.getOffset(), sorting);
     }
 
-    protected abstract Stream<T> fetchResults(int limit, int offset, Collection<Sorting> sorting);
+    protected Stream<T> fetchResults(int limit, int offset, Collection<Sorting> sorting) {
+        return Stream.empty();
+    }
 
-    protected abstract int countResults();
+    protected int countResults() {
+        return 0;
+    }
 
     /**
      * Initialised by Spring after DI of the subclass — ensures use cases are available.
      */
     @PostConstruct
     private void initialize() {
-        grid = buildGrid(creatActions());
+        grid = buildGrid(createActions());
         dataProvider = buildDataProvider();
         grid.setDataProvider(dataProvider);
         buildLayout();
@@ -123,9 +129,6 @@ public abstract class BasePage<T> extends DataEditor<T> {
 
     @Override
     protected abstract String tableTitle();
-
-    @Override
-    protected abstract String newButtonLabel();
 
     // ── DataProvider (server-side pagination) ─────────────────────────────────
 
@@ -177,6 +180,21 @@ public abstract class BasePage<T> extends DataEditor<T> {
         }
     }
 
+    @Override
+    protected void executeRestore(T obj) {
+        try {
+            restore(obj);
+            refresh();
+            notifySuccess(getTranslation("notify.restored"));
+        } catch (ValidationException e) {
+            ValidationNotifier.show(this::getTranslation, e);
+        }
+    }
+
+    protected void restore(T obj) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
     /**
      * Reloads the grid (triggers a new fetch/count in the database) and refreshes the KPIs.
      * Use {@code this::refresh} as a callback in form dialogs.
@@ -204,4 +222,6 @@ public abstract class BasePage<T> extends DataEditor<T> {
         var stats = buildStats();
         if (stats != null) statsContainer.add(stats);
     }
+
+
 }

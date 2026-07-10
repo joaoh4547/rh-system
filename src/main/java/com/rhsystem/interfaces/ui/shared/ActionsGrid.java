@@ -25,11 +25,9 @@ public abstract class ActionsGrid<T> extends AppGrid<T> {
 
 
     protected  ActionsGrid(Collection<ObjectAction<T>> actions) {
-        configColumns();
+        super();
         addActions(actions);
     }
-
-    protected abstract void configColumns();
 
     /**
      * Adds a column to the grid for displaying action buttons (e.g., edit and remove)

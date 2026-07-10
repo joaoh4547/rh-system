@@ -1,6 +1,9 @@
 package com.rhsystem.interfaces.ui.shared;
 
+import com.rhsystem.domain.model.shared.HasDeletion;
+import com.rhsystem.domain.model.shared.HasEnable;
 import com.rhsystem.interfaces.ui.component.LucideIcon;
+import com.rhsystem.utils.Reflections;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -16,10 +19,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import jakarta.annotation.Nullable;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
 
 /**
@@ -90,16 +90,23 @@ public abstract class DataEditor<T> extends VerticalLayout {
     protected void onAttach(AttachEvent event) {
         super.onAttach(event);
         if (grid == null) {
-            grid = buildGrid(creatActions());
+            grid = buildGrid(createActions());
             buildLayout();
             syncGrid();
         }
     }
 
 
-    protected final Collection<ObjectAction<T>> creatActions() {
+    protected final Collection<ObjectAction<T>> createActions() {
         Collection<ObjectAction<T>> actions = new ArrayList<>(createAdditionalActions());
+        if(implementsType(HasEnable.class)){
+            actions.add(createEnableAction());
+            actions.add(createDisableAction());
+        }
         actions.add(createEditAction());
+        if(implementsType(HasDeletion.class)){
+            actions.add(createRestore());
+        }
         actions.add(createDeleteAction());
         return actions;
     }
@@ -110,14 +117,15 @@ public abstract class DataEditor<T> extends VerticalLayout {
                 .icon(LucideIcon::edit)
                 .handler(this::openForm)
                 .enabled(this::canEdit)
+                .visible(this::editVisible)
                 .build();
     }
 
-    public boolean canEdit(T obj){
+    public boolean canEdit(T obj) {
         return true;
     }
 
-    public boolean canDelete(T obj){
+    public boolean canDelete(T obj) {
         return canEdit(obj);
     }
 
@@ -129,10 +137,68 @@ public abstract class DataEditor<T> extends VerticalLayout {
                 .icon(LucideIcon::delete)
                 .handler(this::confirmRemoval)
                 .enabled(this::canDelete)
+                .visible(obj -> {
+                    var visible = deleteVisible(obj);
+                    if (implementsType(HasDeletion.class)) {
+                        return !isDeleted(obj) && visible;
+                    }
+                    return visible;
+                })
                 .build();
     }
 
-    protected  Collection<ObjectAction<T>> createAdditionalActions() {
+
+    protected ObjectAction<T> createRestore() {
+        return ObjectAction.<T>builder()
+                .label(getTranslation("action.restore"))
+                .icon(LucideIcon::restore)
+                .enabled(this::canRestore)
+                .handler(this::confirmRestore)
+                .visible(obj -> {
+                    if (implementsType(HasDeletion.class)) {
+                        return isDeleted(obj);
+                    }
+                    return false;
+                })
+                .build();
+    }
+
+
+    protected void confirmRestore(T obj) {
+        var dlg = new ConfirmDialog();
+        dlg.setHeader(getTranslation("confirm.restore.header"));
+        dlg.setText(getTranslation("confirm.restore.text", createDisplayNameExtractor().apply(obj)));
+        dlg.setCancelable(true);
+        dlg.setCancelText(getTranslation("action.cancel"));
+        dlg.setConfirmText(getTranslation("confirm.remove.button"));
+        dlg.setConfirmButtonTheme("error primary");
+        dlg.addConfirmListener(e -> executeRestore(obj));
+        dlg.open();
+    }
+
+
+    protected boolean canRestore(T obj) {
+        return canEdit(obj) && !isDeleted(obj);
+    }
+
+
+    protected boolean insertVisible() {
+        return true;
+    }
+
+    private boolean isDeleted(T obj) {
+        return implementsType(HasDeletion.class, obj).isDeleted();
+    }
+
+    protected boolean deleteVisible(T obj) {
+        return true;
+    }
+
+    protected boolean editVisible(T obj) {
+        return true;
+    }
+
+    protected Collection<ObjectAction<T>> createAdditionalActions() {
         return new ArrayList<>();
     }
 
@@ -168,9 +234,10 @@ public abstract class DataEditor<T> extends VerticalLayout {
     // ── Removal ───────────────────────────────────────────────────────────────
 
     protected void confirmRemoval(T item) {
+        String deleteKey = implementsType(HasDeletion.class) ? "confirm.remove-with-restore" : "confirm.remove.text";
         var dlg = new ConfirmDialog();
         dlg.setHeader(getTranslation("confirm.remove.header"));
-        dlg.setText(getTranslation("confirm.remove.text", createDisplayNameExtractor().apply(item)));
+        dlg.setText(getTranslation(deleteKey, createDisplayNameExtractor().apply(item)));
         dlg.setCancelable(true);
         dlg.setCancelText(getTranslation("action.cancel"));
         dlg.setConfirmText(getTranslation("confirm.remove.button"));
@@ -184,9 +251,19 @@ public abstract class DataEditor<T> extends VerticalLayout {
     }
 
     protected void executeRemoval(T item) {
-        data.remove(item);
+        if (!implementsType(HasDeletion.class)) {
+            data.remove(item);
+        } else {
+            implementsType(HasDeletion.class, item).setDeleted(true);
+        }
         syncGrid();
     }
+
+    protected void executeRestore(T obj) {
+        implementsType(HasDeletion.class, obj).setDeleted(false);
+        syncGrid();
+    }
+
 
     // ── In-memory helpers ─────────────────────────────────────────────────────
 
@@ -240,6 +317,7 @@ public abstract class DataEditor<T> extends VerticalLayout {
         var btnNew = new Button(newLabel, LucideIcon.add(),
                 e -> openForm(null));
         btnNew.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        btnNew.setVisible(insertVisible());
 
         var toolbar = new HorizontalLayout(t, btnNew);
         toolbar.setWidthFull();
@@ -255,5 +333,76 @@ public abstract class DataEditor<T> extends VerticalLayout {
 
     protected void notifyError(String message) {
         Notification.show(message).addThemeVariants(NotificationVariant.LUMO_ERROR);
+    }
+
+    @SuppressWarnings("unchecked")
+    protected Class<T> getType() {
+        return (Class<T>) Reflections.getGenericType(getClass(), 0);
+    }
+
+    protected Function<T, String> entityTextProvider() {
+        return Object::toString;
+    }
+
+    protected boolean implementsType(Class<?> type) {
+        return type.isAssignableFrom(getType());
+    }
+
+    protected <I> I implementsType(Class<I> type, Object target) {
+        if (type.isAssignableFrom(getType())) {
+            return type.cast(target);
+        }
+        return null;
+    }
+
+    protected String getEntityName() {
+        return null;
+    }
+
+    protected void enable(T obj) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    protected void disable(T obj) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+
+    private EnableDialog<T> createEnable(boolean enable, T target) {
+        return new EnableDialog<T>(target, (o) -> {
+            if (enable) {
+                enable(o);
+            } else {
+                disable(o);
+            }
+            refresh();
+        }, entityTextProvider(), getEntityName(), getEntityArticle(), enable);
+    }
+
+    protected ObjectAction<T> createDisableAction() {
+        return ObjectAction.<T>builder()
+                .label(getTranslation("action.disable"))
+                .icon(LucideIcon::lock)
+                .handler(x -> createEnable(false, x).open())
+                .visible(this::isEnable)
+                .build();
+    }
+
+    private boolean isEnable(T obj) {
+        return Objects.requireNonNull(implementsType(HasEnable.class, obj)).isEnable();
+    }
+
+    protected ObjectAction<T> createEnableAction() {
+        return ObjectAction.<T>builder()
+                .label(getTranslation("action.enable"))
+                .icon(LucideIcon::unLock)
+                .handler(x -> createEnable(true, x).open())
+                .visible(g -> !isEnable(g))
+                .build();
+    }
+
+
+    protected String getEntityArticle() {
+        return "";
     }
 }
