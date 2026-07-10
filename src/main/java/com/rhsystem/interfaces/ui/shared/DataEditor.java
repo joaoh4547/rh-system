@@ -18,6 +18,7 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import jakarta.annotation.Nullable;
+import org.springframework.security.core.session.SessionRegistry;
 
 import java.util.*;
 import java.util.function.Function;
@@ -260,6 +261,7 @@ public abstract class DataEditor<T> extends VerticalLayout {
     }
 
     protected void executeRestore(T obj) {
+        SessionRegistry x;
         implementsType(HasDeletion.class, obj).setDeleted(false);
         syncGrid();
     }
@@ -386,6 +388,7 @@ public abstract class DataEditor<T> extends VerticalLayout {
                 .handler(x -> createEnable(false, x).open())
                 .visible(this::isEnable)
                 .build();
+
     }
 
     private boolean isEnable(T obj) {
