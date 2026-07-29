@@ -121,15 +121,6 @@ public class GroupPage extends BasePage<Group> {
         return true;
     }
 
-    @Override
-    protected Collection<ObjectAction<Group>> createAdditionalActions() {
-        Collection<ObjectAction<Group>> actions = new ArrayList<>();
-        actions.add(createDisableAction());
-        actions.add(createEnableAction());
-        return actions;
-    }
-
-
 
     protected void enable(Group group) {
         enableGroup.execute(new EnableGroupCommand(group.getId(), true));
@@ -144,8 +135,6 @@ public class GroupPage extends BasePage<Group> {
     protected String getEntityArticle() {
         return getTranslation("masc.article");
     }
-
-
 
 
 }

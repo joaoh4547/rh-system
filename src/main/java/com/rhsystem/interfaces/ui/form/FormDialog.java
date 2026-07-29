@@ -26,9 +26,10 @@ public class FormDialog<T> extends Dialog {
     private final Form<T> form;
     private final Button maximizeButton;
     private String normalWidth = "680px";
+    private String normalHeight = null;
     private boolean maximized = false;
 
-    private Map<Button, Tooltip> TOOLTIP_MAP = new LinkedHashMap<>();
+    private final Map<Button, Tooltip> TOOLTIP_MAP = new LinkedHashMap<>();
 
     public FormDialog(String title, Form<T> form) {
         this.form = form;
@@ -79,6 +80,7 @@ public class FormDialog<T> extends Dialog {
     protected void toggleMaximize() {
         maximized = !maximized;
         if (maximized) {
+            captureNormalSize();
             getElement().getThemeList().add("maximized");
             setWidth("100vw");
             setHeight("100vh");
@@ -86,6 +88,7 @@ public class FormDialog<T> extends Dialog {
         } else {
             getElement().getThemeList().remove("maximized");
             setWidth(normalWidth);
+            setHeight(normalHeight);
             updateMaximizeButton(VaadinIcon.EXPAND_FULL, "Maximizar");
         }
         clearDragPosition();
@@ -93,11 +96,21 @@ public class FormDialog<T> extends Dialog {
 
     protected void maximize() {
         this.maximized = true;
+        captureNormalSize();
         getElement().getThemeList().add("maximized");
         setWidth("100vw");
         setHeight("100vh");
         updateMaximizeButton(VaadinIcon.COMPRESS_SQUARE, "Restaurar");
         clearDragPosition();
+    }
+
+    /**
+     * Snapshots the current size (including manual resizes) so restore
+     * returns the dialog to exactly how it was before maximizing.
+     */
+    private void captureNormalSize() {
+        normalWidth = getWidth();
+        normalHeight = getHeight();
     }
 
     private void clearDragPosition() {
@@ -132,6 +145,14 @@ public class FormDialog<T> extends Dialog {
         this.normalWidth = width;
         if (!maximized) {
             setWidth(width);
+        }
+        return this;
+    }
+
+    public FormDialog<T> height(String height) {
+        this.normalHeight = height;
+        if (!maximized) {
+            setHeight(height);
         }
         return this;
     }

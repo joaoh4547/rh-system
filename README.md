@@ -100,8 +100,10 @@ Campos: nome, sobrenome, username, email, senha, status, CPF, RG, endereço (log
 
 ### Gerenciamento de Cache
 
-- Visualização do consumo de memória e número de entradas por cache (Hazelcast IMap).
-- Operações de limpeza individual (`ClearCache`) ou limpeza global (`Global flush`).
+- **Cards-resumo** no topo: quantidade de caches ativos, total de entradas, memória utilizada e total de hits.
+- Grid de caches (Hazelcast IMap) com nome, entradas, memória e hits por cache.
+- Cada linha pode ser **expandida** (clique) e mostra: cards com as métricas agregadas do cache, com rótulos amigáveis — "Entradas nesta instância" / "Cópias de outras instâncias" (próprias/backup no cluster), "Memória (nesta instância)" / "Memória (cópias)", "Acessos com sucesso" (hits) e "Consultas realizadas" (get), `CacheDetail` via `LocalMapStats` — **e uma grade com cada entrada armazenada** (chave, tipo, prévia do valor, memória e hits por entrada — `CacheEntry` via `getEntryView`).
+- A única operação exposta é a **limpeza (evict)**: individual por cache (`ClearCache`) ou global. As métricas de escrita/remoção (put/remove) foram removidas por não fazerem sentido no padrão de cache do projeto, que usa `@CacheEvict(allEntries=true)` (= `IMap.clear`).
 - Acesso restrito via `CachePage`.
 
 ## Segurança e Permissões

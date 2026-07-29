@@ -4,6 +4,8 @@ import com.rhsystem.application.usecase.parameter.CountParameters;
 import com.rhsystem.application.usecase.parameter.ListParameters;
 import com.rhsystem.domain.model.Sorting;
 import com.rhsystem.domain.model.parameters.Parameter;
+import com.rhsystem.domain.model.parameters.ParameterValueConverter;
+import com.rhsystem.domain.model.security.ValueEncoder;
 import com.rhsystem.interfaces.ui.MainLayout;
 import com.rhsystem.interfaces.ui.shared.AppGrid;
 import com.rhsystem.interfaces.ui.shared.BasePage;
@@ -25,8 +27,10 @@ import java.util.stream.Stream;
 public class ParameterPage extends BasePage<Parameter> {
 
 
-    private ListParameters listParameters;
-    private CountParameters countParameters;
+    private final ListParameters listParameters;
+    private final CountParameters countParameters;
+    private final ValueEncoder encoder;
+    private final ParameterValueConverter valueConverter;
 
     @Override
     protected String pageTitle() {
@@ -50,7 +54,7 @@ public class ParameterPage extends BasePage<Parameter> {
 
     @Override
     protected Dialog buildForm(@Nullable Parameter item) {
-        return null;
+        return new ParameterFormDialog(item, this::refresh, encoder, valueConverter);
     }
 
     @Override

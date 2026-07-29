@@ -48,6 +48,11 @@ public abstract class Form<T> extends Div {
         initialize();
     }
 
+    protected Form(T value){
+        this.binder = new BeanValidationBinder<>(getType());
+        setBean(value);
+        initialize();
+    }
 
     public Class<T> getType() {
         return (Class<T>) Reflections.getGenericType(getClass(),0);
@@ -89,13 +94,26 @@ public abstract class Form<T> extends Div {
     /* ===================== Bind helpers ===================== */
 
     protected <C extends Component & HasValue<?, V>, V> C bind(C field, String property) {
-        binder.forField(field).bind(property);
+        var binding = binder.forField(field).bind(property);
+        readIntoBinding(binding);
         return field;
     }
 
     protected <C extends Component & HasValue<?, V>, V> C bindRequired(C field, String property, String error) {
-        binder.forField(field).asRequired(error).bind(property);
+        var binding = binder.forField(field).asRequired(error).bind(property);
+        readIntoBinding(binding);
         return field;
+    }
+
+    /**
+     * Initializes a freshly created binding with the current bean value. Needed because
+     * {@link #Form(Object)} calls {@link Binder#readBean(Object)} before subclass
+     * constructors have created/bound any fields.
+     */
+    private void readIntoBinding(Binder.Binding<T, ?> binding) {
+        if (bean != null) {
+            binding.read(bean);
+        }
     }
 
     /* ===================== Field factories ===================== */

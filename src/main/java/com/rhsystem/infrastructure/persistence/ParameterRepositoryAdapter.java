@@ -20,7 +20,7 @@ public class ParameterRepositoryAdapter implements ParameterRepository {
     private final JpaParameterRepository jpa;
 
     @Override
-    @Cacheable(cacheNames = CacheConfig.PARAMETERS, key = "'page:' + #limit + ':' + #offset + ':' + #sorting")
+    @Cacheable(cacheNames = CacheConfig.PARAMETERS, key = "'page:' + #limit + ':' + #offset + ':' + #sorting.toString()")
     public Collection<Parameter> findAllPaginated(int limit, int offset, Collection<Sorting> sorting) {
         int page = limit > 0 ? offset / limit : 0;
         var pageable = JpaSortUtil.createSort(sorting, Sort.by("name"));

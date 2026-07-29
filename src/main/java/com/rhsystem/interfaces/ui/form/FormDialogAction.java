@@ -84,6 +84,7 @@ public final class FormDialogAction implements Serializable {
     /** Constrói o botão; {@code closeAction} é fornecido pelo diálogo. */
     Button build(Runnable closeAction) {
         Button button = (icon != null) ? new Button(text, icon) : new Button(text);
+        button.addThemeVariants(ButtonVariant.SMALL);
         if (!variants.isEmpty()) {
             button.addThemeVariants(variants.toArray(new ButtonVariant[0]));
         }
