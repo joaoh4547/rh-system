@@ -23,15 +23,34 @@ import java.util.Map;
 public class FormDialog<T> extends Dialog {
 
     @Getter
-    private final Form<T> form;
-    private final Button maximizeButton;
+    private Form<T> form;
+    private Button maximizeButton;
     private String normalWidth = "680px";
     private String normalHeight = null;
     private boolean maximized = false;
 
     private final Map<Button, Tooltip> TOOLTIP_MAP = new LinkedHashMap<>();
 
+    /**
+     * For subclasses managed by the DI container (e.g. Spring prototype beans):
+     * dependencies are injected in the subclass constructor and the dialog is
+     * assembled later via {@link #init(String, Form)}.
+     */
+    protected FormDialog() {
+    }
+
     public FormDialog(String title, Form<T> form) {
+        init(title, form);
+    }
+
+    /**
+     * Assembles the dialog (title, header buttons, form). Must be called exactly
+     * once before the dialog is opened.
+     */
+    protected final void init(String title, Form<T> form) {
+        if (this.form != null) {
+            throw new IllegalStateException("FormDialog already initialized");
+        }
         this.form = form;
         addThemeName("form-dialog");
         final String header = getTranslation(title);

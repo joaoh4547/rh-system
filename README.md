@@ -248,7 +248,7 @@ Base de CRUD reutilizável em `interfaces/ui/shared`:
 - **`BasePage<T>`** — estende `DataEditor`; página CRUD completa com cabeçalho, cards de KPI (`StatCard`) e grid paginado no servidor (`DataProvider.fromCallbacks` + ordenação via `Sorting`), persistindo pelos casos de uso.
 - **`AppGrid`/`ActionsGrid`** — grid padronizado + coluna de ações por linha (`ObjectAction` com ícone, tooltip e predicados de habilitado/visível); **`EnableDialog`** — confirmação de ativar/desativar.
 
-Infra de formulários em `interfaces/ui/form`: **`Form<T>`** (binder + fábricas de campos), **`FormDialog<T>`** (diálogo arrastável/redimensionável com maximizar) e **`FormDialogAction`** (botões do rodapé). Cada entidade segue o conjunto `Page` / `Grid` / `Form` / `FormDialog` / `FormModel` em `interfaces/ui/pages/<entidade>/`.
+Infra de formulários em `interfaces/ui/form`: **`Form<T>`** (binder + fábricas de campos), **`FormDialog<T>`** (diálogo arrastável/redimensionável com maximizar) e **`FormDialogAction`** (botões do rodapé). Cada entidade segue o conjunto `Page` / `Grid` / `Form` / `FormDialog` / `FormModel` em `interfaces/ui/pages/<entidade>/`. Os `FormDialog`s são beans Spring de escopo prototype: os use cases são injetados pelo Spring e a página obtém o diálogo via `ObjectProvider`, chamando `edit(entidade, onSaved)`.
 
 Componentes reutilizáveis (`interfaces/ui/component`): `LucideIcon` (ícones Lucide), `StatCard` (KPI), `DocumentField` (campo com máscara de CPF/RG), `RichTextEditor` com `RichTextSanitizer` (sanitização OWASP do HTML), `AppFooter` (rodapé do drawer com ano, endereço do servidor e timer) e `SessionTimer`.
 

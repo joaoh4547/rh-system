@@ -20,6 +20,7 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import lombok.AllArgsConstructor;
 import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -48,10 +49,9 @@ public class GroupPage extends BasePage<Group> {
 
     private final GetGroupSummary getGroupSummary;
     private final ListGroups listGroups;
-    private final CreateGroup createGroup;
-    private final UpdateGroup updateGroup;
     private final GetGroup getGroup;
     private final EnableGroup enableGroup;
+    private final ObjectProvider<GroupFormDialog> groupFormDialog;
 
 
     @Override
@@ -73,7 +73,7 @@ public class GroupPage extends BasePage<Group> {
     @Override
     protected Dialog buildForm(@Nullable Group item) {
         Group fullItem = item != null ? getGroup.execute(item.getId()) : null;
-        return new GroupFormDialog(fullItem, createGroup, updateGroup, this::refresh);
+        return groupFormDialog.getObject().edit(fullItem, this::refresh);
     }
 
     @Override
