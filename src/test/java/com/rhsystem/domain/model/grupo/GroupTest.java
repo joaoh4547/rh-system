@@ -37,8 +37,8 @@ class GroupTest {
     @Test
     void notEqualToNullOrOtherType() {
         Group group = withId(1L, "Admins");
-        assertNotEquals(group, null);
-        assertNotEquals(group, "Admins");
+        assertNotEquals(null, group);
+        assertNotEquals("Admins", group);
     }
 
     @Test
@@ -46,7 +46,7 @@ class GroupTest {
         Group group = withId(1L, "Admins");
         int before = group.hashCode();
         group.setName("Renamed");
-        group.setActive(false);
+        group.setEnable(false);
         assertEquals(before, group.hashCode());
     }
 

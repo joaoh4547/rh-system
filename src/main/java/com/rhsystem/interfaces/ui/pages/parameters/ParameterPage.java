@@ -1,10 +1,12 @@
 package com.rhsystem.interfaces.ui.pages.parameters;
 
+import com.rhsystem.application.dto.parameter.UpdateParameter;
 import com.rhsystem.application.usecase.parameter.CountParameters;
 import com.rhsystem.application.usecase.parameter.ListParameters;
 import com.rhsystem.domain.model.Sorting;
 import com.rhsystem.domain.model.parameters.Parameter;
 import com.rhsystem.domain.model.parameters.ParameterValueConverter;
+import com.rhsystem.domain.model.security.ValueDecoder;
 import com.rhsystem.domain.model.security.ValueEncoder;
 import com.rhsystem.interfaces.ui.MainLayout;
 import com.rhsystem.interfaces.ui.shared.AppGrid;
@@ -31,6 +33,8 @@ public class ParameterPage extends BasePage<Parameter> {
     private final CountParameters countParameters;
     private final ValueEncoder encoder;
     private final ParameterValueConverter valueConverter;
+    private final ValueDecoder decoder;
+    private final UpdateParameter updateParameter;
 
     @Override
     protected String pageTitle() {
@@ -54,7 +58,7 @@ public class ParameterPage extends BasePage<Parameter> {
 
     @Override
     protected Dialog buildForm(@Nullable Parameter item) {
-        return new ParameterFormDialog(item, this::refresh, encoder, valueConverter);
+        return new ParameterFormDialog(item, this::refresh, encoder, valueConverter, decoder, updateParameter);
     }
 
     @Override

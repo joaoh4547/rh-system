@@ -67,7 +67,7 @@ class GroupCommandUseCasesTest {
 
             assertEquals("RH", saved.getName());
             assertEquals("Recursos Humanos", saved.getDescription());
-            assertTrue(saved.isActive());
+            assertTrue(saved.isEnable());
             assertFalse(saved.isAdmin());
             assertEquals(Set.of(Functionality.VIEW_USER, Functionality.CREATE_USER),
                     Set.copyOf(saved.getFunctionalities()));
@@ -101,7 +101,7 @@ class GroupCommandUseCasesTest {
         @Test
         void replacesFieldsAndFunctionalities() {
             Group existing = Group.builder()
-                    .id(1L).name("Antigo").description("desc").active(true).admin(false)
+                    .id(1L).name("Antigo").description("desc").enable(true).admin(false)
                     .functionalities(new ArrayList<>(List.of(Functionality.VIEW_USER)))
                     .build();
             when(groupRepository.findByIdWithFunctionalities(1L)).thenReturn(Optional.of(existing));
@@ -113,7 +113,7 @@ class GroupCommandUseCasesTest {
 
             assertEquals("Novo", updated.getName());
             assertEquals("nova desc", updated.getDescription());
-            assertFalse(updated.isActive());
+            assertFalse(updated.isEnable());
             assertTrue(updated.isAdmin());
             assertEquals(Set.of(Functionality.CREATE_GROUP, Functionality.DELETE_GROUP),
                     Set.copyOf(updated.getFunctionalities()));
@@ -122,7 +122,7 @@ class GroupCommandUseCasesTest {
         @Test
         void nullFunctionalitiesClearsCollection() {
             Group existing = Group.builder()
-                    .id(1L).name("G").active(true)
+                    .id(1L).name("G").enable(true)
                     .functionalities(new ArrayList<>(List.of(Functionality.VIEW_USER)))
                     .build();
             when(groupRepository.findByIdWithFunctionalities(1L)).thenReturn(Optional.of(existing));
@@ -140,23 +140,23 @@ class GroupCommandUseCasesTest {
 
         @Test
         void disablesGroup() {
-            Group group = Group.builder().id(1L).active(true).build();
+            Group group = Group.builder().id(1L).enable(true).build();
             when(groupRepository.findById(1L)).thenReturn(Optional.of(group));
 
             new EnableGroup(groupRepository).execute(new EnableGroupCommand(1L, false));
 
-            assertFalse(group.isActive());
+            assertFalse(group.isEnable());
             verify(groupRepository).save(group);
         }
 
         @Test
         void reenablesGroup() {
-            Group group = Group.builder().id(1L).active(false).build();
+            Group group = Group.builder().id(1L).enable(false).build();
             when(groupRepository.findById(1L)).thenReturn(Optional.of(group));
 
             new EnableGroup(groupRepository).execute(new EnableGroupCommand(1L, true));
 
-            assertTrue(group.isActive());
+            assertTrue(group.isEnable());
         }
 
         @Test

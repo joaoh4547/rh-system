@@ -9,6 +9,9 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -36,7 +39,9 @@ public class Parameter implements Serializable, HasEnable, HasDeletion {
     @Column(name = "parameter_validator")
     private Class<? extends ParameterValidator> validator;
 
-    @Column(name = "parameter_type")
+    @Column(name = "parameter_type", nullable = false, columnDefinition = "parameter_type")
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private ParameterType type;
 
     @Column(name = "parameter_value")

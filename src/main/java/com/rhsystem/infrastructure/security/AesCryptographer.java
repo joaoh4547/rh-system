@@ -1,5 +1,6 @@
 package com.rhsystem.infrastructure.security;
 
+import com.google.common.base.Strings;
 import com.rhsystem.domain.model.security.ValueDecoder;
 import com.rhsystem.domain.model.security.ValueEncoder;
 import jakarta.annotation.PostConstruct;
@@ -40,6 +41,9 @@ public class AesCryptographer implements ValueEncoder, ValueDecoder {
 
     @Override
     public String decode(String value) {
+        if(Strings.isNullOrEmpty(value)) {
+            return null;
+        }
         String[] parts = value.split(":", 2);
         if (parts.length != 2) {
             throw new IllegalArgumentException("Invalid value format");
@@ -52,6 +56,9 @@ public class AesCryptographer implements ValueEncoder, ValueDecoder {
 
     @Override
     public String encode(String value) {
+        if(Strings.isNullOrEmpty(value)) {
+            return null;
+        }
         byte[] iv = generateIv();
         var cipher = createCipher(Cipher.ENCRYPT_MODE, iv);
         byte[] encrypted = execute(cipher, value.getBytes(StandardCharsets.UTF_8));

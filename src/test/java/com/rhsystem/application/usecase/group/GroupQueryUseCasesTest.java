@@ -62,7 +62,7 @@ class GroupQueryUseCasesTest {
 
         @Test
         void listsOnlyActiveGroupsForSelectionWidgets() {
-            List<Group> active = List.of(Group.builder().id(1L).active(true).build());
+            List<Group> active = List.of(Group.builder().id(1L).enable(true).build());
             when(groupRepository.findAllActive()).thenReturn(active);
 
             assertEquals(active, new ListGroups(groupRepository).executeActive());

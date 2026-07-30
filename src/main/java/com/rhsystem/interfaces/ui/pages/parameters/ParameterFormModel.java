@@ -3,8 +3,27 @@ package com.rhsystem.interfaces.ui.pages.parameters;
 import com.rhsystem.domain.model.parameters.Parameter;
 import com.rhsystem.domain.model.parameters.ParameterType;
 import com.rhsystem.domain.model.parameters.ParameterValueConverter;
+import com.rhsystem.domain.model.security.ValueDecoder;
+import com.rhsystem.utils.SpringContext;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-public record ParameterFormModel(String name, ParameterType type, Object value) {
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class ParameterFormModel{
+
+
+    private String name;
+    private ParameterType type;
+    private Object value;
+
+
+
+
 
     public static ParameterFormModel of(Parameter target, ParameterValueConverter converter) {
         return new ParameterFormModel(target.getName(), target.getType(), fieldValue(target, converter));
@@ -21,4 +40,5 @@ public record ParameterFormModel(String name, ParameterType type, Object value) 
         }
         return converted;
     }
+
 }

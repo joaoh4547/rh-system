@@ -37,7 +37,7 @@ class GroupPersistenceTest {
         return Group.builder()
                 .name(name)
                 .description("desc " + name)
-                .active(active)
+                .enable(active)
                 .admin(false)
                 .functionalities(new ArrayList<>(List.of(functionalities)))
                 .build();
@@ -88,7 +88,7 @@ class GroupPersistenceTest {
         assertTrue(names.contains("Zeta"));
         assertFalse(names.contains("Beta"));
         assertTrue(names.indexOf("Alpha") < names.indexOf("Zeta")); // ordenado por nome
-        assertTrue(active.stream().allMatch(Group::isActive));
+        assertTrue(active.stream().allMatch(Group::isEnable));
     }
 
     @Test

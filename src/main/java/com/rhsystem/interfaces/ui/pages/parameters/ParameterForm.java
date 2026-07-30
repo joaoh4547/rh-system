@@ -24,7 +24,7 @@ public class ParameterForm extends Form<ParameterFormModel> {
         var obj = getBean();
         final var label = getTranslation("value.label");
         final var property = "value";
-        return switch (obj.type()) {
+        return switch (obj.getType()) {
             case TEXT -> textField(label, property);
             case NUMBER -> numberField(label, property);
             case SECRET -> passwordField(label, property);

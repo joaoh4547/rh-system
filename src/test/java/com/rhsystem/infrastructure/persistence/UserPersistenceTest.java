@@ -114,7 +114,7 @@ class UserPersistenceTest {
     @Test
     void findByIdWithGroupsFetchesMemberships() {
         Group group = groupRepository.save(Group.builder()
-                .name("RH").active(true).admin(false)
+                .name("RH").enable(true).admin(false)
                 .functionalities(new ArrayList<>())
                 .build());
         User user = newUser("Elisa", FREE_CPFS[0]);

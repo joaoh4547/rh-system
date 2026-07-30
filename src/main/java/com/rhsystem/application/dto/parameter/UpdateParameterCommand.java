@@ -1,4 +1,4 @@
-package com.rhsystem.interfaces.ui.pages.parameters;
+package com.rhsystem.application.dto.parameter;
 
 import com.rhsystem.domain.model.parameters.AppParameter;
 

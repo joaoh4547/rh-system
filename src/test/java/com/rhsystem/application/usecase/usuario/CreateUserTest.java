@@ -84,7 +84,7 @@ class CreateUserTest {
     void createsPendingUserWithGeneratedUsernameNormalizedDocumentsAndActivationEmail() {
         when(userRepository.existsByUsername(anyString())).thenReturn(false);
         when(groupRepository.findAllById(Set.of(5L)))
-                .thenReturn(List.of(Group.builder().id(5L).name("RH").active(true).build()));
+                .thenReturn(List.of(Group.builder().id(5L).name("RH").enable(true).build()));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         User saved = useCase.execute(command(Set.of(5L), null));

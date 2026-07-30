@@ -20,7 +20,7 @@ class UserTest {
     private static Group group(boolean active, boolean admin, Functionality... functionalities) {
         return Group.builder()
                 .name("g")
-                .active(active)
+                .enable(active)
                 .admin(admin)
                 .functionalities(new ArrayList<>(List.of(functionalities)))
                 .build();
