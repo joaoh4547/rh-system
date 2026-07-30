@@ -5,6 +5,9 @@ import com.rhsystem.application.dto.usuario.DocumentUpload;
 import com.rhsystem.application.port.FileStorage;
 import com.rhsystem.application.port.UserNotifier;
 import com.rhsystem.application.validation.CommandValidator;
+import com.rhsystem.domain.model.parameters.AppParameter;
+import com.rhsystem.domain.model.parameters.Parameter;
+import com.rhsystem.domain.model.parameters.ParameterValueConverter;
 import com.rhsystem.domain.model.usuario.ActivationToken;
 import com.rhsystem.domain.model.usuario.Document;
 import com.rhsystem.domain.model.usuario.TokenPurpose;
@@ -12,13 +15,18 @@ import com.rhsystem.domain.model.usuario.UserStatus;
 import com.rhsystem.domain.model.usuario.User;
 import com.rhsystem.domain.repository.ActivationTokenRepository;
 import com.rhsystem.domain.repository.GroupRepository;
+import com.rhsystem.domain.repository.ParameterRepository;
 import com.rhsystem.domain.repository.UserRepository;
 import com.rhsystem.domain.service.CpfValidator;
 import com.rhsystem.domain.service.UsernameGenerator;
 import com.rhsystem.domain.validation.ValidationResult;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Optional;
 import java.util.Set;
+
+import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
  * creates the activation token and sends the email.
  */
 @Service
+@AllArgsConstructor
 public class CreateUser {
 
     private final UserRepository userRepository;
@@ -36,23 +45,9 @@ public class CreateUser {
     private final UserNotifier notifier;
     private final FileStorage fileStorage;
     private final CommandValidator commandValidator;
-    private final long tokenValidityHours;
+    private final ParameterRepository parameterRepository;
+    private final ParameterValueConverter converter;
 
-    public CreateUser(UserRepository userRepository,
-                      GroupRepository groupRepository,
-                      ActivationTokenRepository tokenRepository,
-                      UserNotifier notifier,
-                      FileStorage fileStorage,
-                      CommandValidator commandValidator,
-                      @Value("${rh-system.ativacao-token-validade-horas:24}") long tokenValidityHours) {
-        this.userRepository = userRepository;
-        this.groupRepository = groupRepository;
-        this.tokenRepository = tokenRepository;
-        this.notifier = notifier;
-        this.fileStorage = fileStorage;
-        this.commandValidator = commandValidator;
-        this.tokenValidityHours = tokenValidityHours;
-    }
 
     @Transactional
     public User execute(CreateUserCommand cmd) {
@@ -91,8 +86,9 @@ public class CreateUser {
 
         User saved = userRepository.save(user);
 
+
         ActivationToken token = new ActivationToken(saved,
-                LocalDateTime.now().plusHours(tokenValidityHours), TokenPurpose.ACTIVATION);
+                LocalDateTime.now().plusHours(getTokenValidityHours()), TokenPurpose.ACTIVATION);
         tokenRepository.save(token);
 
         notifier.sendActivation(saved, token.getToken());
@@ -108,5 +104,10 @@ public class CreateUser {
         doc.setStoragePath(path);
         doc.setSize(upload.content() == null ? 0L : (long) upload.content().length);
         return doc;
+    }
+
+    private Long getTokenValidityHours() {
+        var param = parameterRepository.findByParameter(AppParameter.USER_ACTIVATION_TOKEN_EXPIRATION_TIME_HOURS);
+        return param.map(parameter -> Long.parseLong(converter.convert(parameter))).orElse(24L);
     }
 }

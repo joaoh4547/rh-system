@@ -17,20 +17,24 @@ import com.rhsystem.application.port.FileStorage;
 import com.rhsystem.application.port.UserNotifier;
 import com.rhsystem.application.validation.CommandValidator;
 import com.rhsystem.domain.model.grupo.Group;
+import com.rhsystem.domain.model.parameters.ParameterValueConverter;
 import com.rhsystem.domain.model.usuario.ActivationToken;
 import com.rhsystem.domain.model.usuario.TokenPurpose;
 import com.rhsystem.domain.model.usuario.User;
 import com.rhsystem.domain.model.usuario.UserStatus;
 import com.rhsystem.domain.repository.ActivationTokenRepository;
 import com.rhsystem.domain.repository.GroupRepository;
+import com.rhsystem.domain.repository.ParameterRepository;
 import com.rhsystem.domain.repository.UserRepository;
 import com.rhsystem.domain.validation.ValidationException;
 import com.rhsystem.domain.validation.Violation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidatorFactory;
+
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +51,8 @@ class CreateUserTest {
     private UserRepository userRepository;
     private GroupRepository groupRepository;
     private ActivationTokenRepository tokenRepository;
+    private ParameterValueConverter converter;
+    private ParameterRepository parameterRepository;
     private UserNotifier notifier;
     private FileStorage fileStorage;
     private CreateUser useCase;
@@ -67,10 +73,12 @@ class CreateUserTest {
         userRepository = mock(UserRepository.class);
         groupRepository = mock(GroupRepository.class);
         tokenRepository = mock(ActivationTokenRepository.class);
+        parameterRepository = mock(ParameterRepository.class);
         notifier = mock(UserNotifier.class);
         fileStorage = mock(FileStorage.class);
+        converter = mock(ParameterValueConverter.class);
         useCase = new CreateUser(userRepository, groupRepository, tokenRepository,
-                notifier, fileStorage, commandValidator, 24);
+                notifier, fileStorage, commandValidator, parameterRepository, converter);
     }
 
     private static CreateUserCommand command(Set<Long> groupIds, List<DocumentUpload> documents) {
