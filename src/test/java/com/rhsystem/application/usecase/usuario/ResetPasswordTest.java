@@ -66,10 +66,10 @@ class ResetPasswordTest {
         user.setPassword("old-hash");
         ActivationToken token = new ActivationToken(user,
                 LocalDateTime.now().plusHours(1), TokenPurpose.PASSWORD_RESET);
-        when(tokenRepository.findByToken(token.getToken())).thenReturn(Optional.of(token));
+        when(tokenRepository.findByToken(token.getRawToken())).thenReturn(Optional.of(token));
         when(passwordEncoder.encode("newpass1")).thenReturn("NEW-HASH");
 
-        useCase.execute(new ActivationCommand(token.getToken(), "newpass1", "newpass1"));
+        useCase.execute(new ActivationCommand(token.getRawToken(), "newpass1", "newpass1"));
 
         assertEquals("NEW-HASH", user.getPassword());
         assertEquals(UserStatus.ACTIVE, user.getStatus());
@@ -91,10 +91,10 @@ class ResetPasswordTest {
     void activationTokenCannotResetPassword() {
         ActivationToken token = new ActivationToken(new User(),
                 LocalDateTime.now().plusHours(1), TokenPurpose.ACTIVATION);
-        when(tokenRepository.findByToken(token.getToken())).thenReturn(Optional.of(token));
+        when(tokenRepository.findByToken(token.getRawToken())).thenReturn(Optional.of(token));
 
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> useCase.execute(new ActivationCommand(token.getToken(), "newpass1", "newpass1")));
+                () -> useCase.execute(new ActivationCommand(token.getRawToken(), "newpass1", "newpass1")));
         assertEquals("error.token.reset.expired", ex.getMessage());
         verify(userRepository, never()).save(any());
     }
@@ -103,16 +103,16 @@ class ResetPasswordTest {
     void expiredOrUsedTokenIsRejected() {
         ActivationToken expired = new ActivationToken(new User(),
                 LocalDateTime.now().minusMinutes(1), TokenPurpose.PASSWORD_RESET);
-        when(tokenRepository.findByToken(expired.getToken())).thenReturn(Optional.of(expired));
+        when(tokenRepository.findByToken(expired.getRawToken())).thenReturn(Optional.of(expired));
         assertThrows(BusinessException.class,
-                () -> useCase.execute(new ActivationCommand(expired.getToken(), "newpass1", "newpass1")));
+                () -> useCase.execute(new ActivationCommand(expired.getRawToken(), "newpass1", "newpass1")));
 
         ActivationToken used = new ActivationToken(new User(),
                 LocalDateTime.now().plusHours(1), TokenPurpose.PASSWORD_RESET);
         used.setUsed(true);
-        when(tokenRepository.findByToken(used.getToken())).thenReturn(Optional.of(used));
+        when(tokenRepository.findByToken(used.getRawToken())).thenReturn(Optional.of(used));
         assertThrows(BusinessException.class,
-                () -> useCase.execute(new ActivationCommand(used.getToken(), "newpass1", "newpass1")));
+                () -> useCase.execute(new ActivationCommand(used.getRawToken(), "newpass1", "newpass1")));
     }
 
     @Test
@@ -120,5 +120,24 @@ class ResetPasswordTest {
         assertThrows(ValidationException.class,
                 () -> useCase.execute(new ActivationCommand("t", "newpass1", "different")));
         verify(tokenRepository, never()).findByToken(any());
+    }
+
+    @Test
+    void passwordEqualToUsernameOrCommonIsRejectedAndTokenKept() {
+        User user = new User();
+        user.setStatus(UserStatus.ACTIVE);
+        user.setUsername("joao.silva");
+        user.setEmail("joao@example.com");
+        ActivationToken token = new ActivationToken(user,
+                LocalDateTime.now().plusHours(1), TokenPurpose.PASSWORD_RESET);
+        when(tokenRepository.findByToken(token.getRawToken())).thenReturn(Optional.of(token));
+
+        assertThrows(ValidationException.class,
+                () -> useCase.execute(new ActivationCommand(token.getRawToken(), "joao.silva", "joao.silva")));
+        assertThrows(ValidationException.class,
+                () -> useCase.execute(new ActivationCommand(token.getRawToken(), "senha123", "senha123")));
+
+        assertTrue(token.isValid(), "a rejected password must not consume the token");
+        verify(userRepository, never()).save(any());
     }
 }

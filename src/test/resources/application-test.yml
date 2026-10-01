@@ -16,6 +16,9 @@ spring:
     locations: classpath:db/migration
 
 rh-system:
+  # Chave AES exclusiva dos testes (gerada aleatoriamente, sem valor em nenhum outro ambiente)
+  aes:
+    key: hHDM1iZarfywMRr9pFO652CMh9HlRsbjmA3wQTnYdRo=
   # Anexos gravados em diretório temporário durante os testes
   storage-dir: ${java.io.tmpdir}/rh-system-test-storage
   cache:

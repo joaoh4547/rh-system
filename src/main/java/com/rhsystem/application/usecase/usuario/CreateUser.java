@@ -1,5 +1,7 @@
 package com.rhsystem.application.usecase.usuario;
 
+import com.rhsystem.domain.model.Functionality.Roles;
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.rhsystem.application.dto.usuario.CreateUserCommand;
 import com.rhsystem.application.dto.usuario.DocumentUpload;
 import com.rhsystem.application.port.FileStorage;
@@ -18,6 +20,7 @@ import com.rhsystem.domain.repository.ActivationTokenRepository;
 import com.rhsystem.domain.repository.GroupRepository;
 import com.rhsystem.domain.repository.ParameterRepository;
 import com.rhsystem.domain.repository.UserRepository;
+import com.rhsystem.domain.service.AttachmentPolicy;
 import com.rhsystem.domain.service.CpfValidator;
 import com.rhsystem.domain.service.UsernameGenerator;
 import com.rhsystem.domain.validation.ValidationResult;
@@ -37,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
  * creates the activation token and publishes {@link UserCreated} (the activation email
  * is sent by a listener, only after this transaction commits).
  */
+@PreAuthorize("hasRole('" + Roles.CREATE_USER + "')")
 @Service
 @AllArgsConstructor
 public class CreateUser {
@@ -65,6 +69,7 @@ public class CreateUser {
                 "cpf", "error.user.cpf.duplicate");
         validation.addIf(!rg.isBlank() && userRepository.existsByRg(rg),
                 "rg", "error.user.rg.duplicate");
+        validateDocuments(cmd.documents(), validation);
         validation.throwIfInvalid();
 
         User user = new User();
@@ -93,8 +98,22 @@ public class CreateUser {
                 LocalDateTime.now().plusHours(getTokenValidityHours()), TokenPurpose.ACTIVATION);
         tokenRepository.save(token);
 
-        events.publish(UserCreated.of(saved, token.getToken()));
+        events.publish(UserCreated.of(saved, token.getRawToken()));
         return saved;
+    }
+
+    /** Server-side upload rules — the UI limits are only a convenience. */
+    private static void validateDocuments(java.util.List<DocumentUpload> documents, ValidationResult validation) {
+        if (documents == null) {
+            return;
+        }
+        validation.addIf(documents.size() > AttachmentPolicy.MAX_FILES, "documents", "error.document.too.many");
+        for (DocumentUpload upload : documents) {
+            validation.addIf(!AttachmentPolicy.isWithinSizeLimit(upload.content()),
+                    "documents", "error.document.size");
+            validation.addIf(AttachmentPolicy.detectAllowedType(upload.content()).isEmpty(),
+                    "documents", "error.document.type");
+        }
     }
 
     private Document createDocument(DocumentUpload upload) {
@@ -102,7 +121,8 @@ public class CreateUser {
         Document doc = new Document();
         doc.setDescription(upload.description());
         doc.setFileName(upload.fileName());
-        doc.setContentType(upload.contentType());
+        // Type detected from the content (already validated), never the client-sent MIME
+        doc.setContentType(AttachmentPolicy.detectAllowedType(upload.content()).orElseThrow());
         doc.setStoragePath(path);
         doc.setSize(upload.content() == null ? 0L : (long) upload.content().length);
         return doc;

@@ -33,7 +33,7 @@ class RequestPasswordResetTest {
         userRepository = mock(UserRepository.class);
         tokenRepository = mock(ActivationTokenRepository.class);
         events = mock(DomainEventPublisher.class);
-        useCase = new RequestPasswordReset(userRepository, tokenRepository, events, 24);
+        useCase = new RequestPasswordReset(userRepository, tokenRepository, events, 30);
     }
 
     @Test
@@ -67,9 +67,12 @@ class RequestPasswordResetTest {
 
         assertEquals(TokenPurpose.PASSWORD_RESET, token.getPurpose());
         assertTrue(token.isValid());
+        assertTrue(token.getExpiresAt().isBefore(java.time.LocalDateTime.now().plusMinutes(31)),
+                "reset links must be short-lived (30 min)");
+        verify(tokenRepository).invalidateActiveTokens(user, TokenPurpose.PASSWORD_RESET);
         ArgumentCaptor<PasswordResetRequested> eventCaptor = ArgumentCaptor.forClass(PasswordResetRequested.class);
         verify(events).publish(eventCaptor.capture());
         assertEquals("joao@example.com", eventCaptor.getValue().email());
-        assertEquals(token.getToken(), eventCaptor.getValue().resetToken());
+        assertEquals(token.getRawToken(), eventCaptor.getValue().resetToken());
     }
 }

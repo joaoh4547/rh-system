@@ -1,5 +1,7 @@
 package com.rhsystem.interfaces.ui;
 
+import com.rhsystem.application.port.AccessManager;
+import com.rhsystem.domain.model.Functionality;
 import com.rhsystem.application.usecase.usuario.GetUserByUserName;
 import com.rhsystem.domain.model.usuario.User;
 import com.rhsystem.infrastructure.config.RhSystemProperties;
@@ -39,11 +41,14 @@ public class MainLayout extends AppLayout {
     private final GetUserByUserName getUserByUserName;
     private final ServerInfoProvider serverInfoProvider;
     private final RhSystemProperties properties;
+    private final AccessManager accessManager;
 
     public MainLayout(AuthenticationContext authContext,
                       GetUserByUserName getUserByUserName,
                       ServerInfoProvider serverInfoProvider,
-                      RhSystemProperties properties) {
+                      RhSystemProperties properties,
+                      AccessManager accessManager) {
+        this.accessManager = accessManager;
         this.authContext = authContext;
         this.getUserByUserName = getUserByUserName;
         this.serverInfoProvider = serverInfoProvider;
@@ -105,17 +110,31 @@ public class MainLayout extends AppLayout {
         nav.addClassName("app-nav");
 
 
+        // Menu entries only for what the user may open (the views enforce it anyway).
         SideNavItem config = new SideNavItem(getTranslation("nav.section.settings"));
         config.setPrefixComponent(LucideIcon.config());
-        config.addItem(new SideNavItem(getTranslation("nav.menu.parameters"), ParameterPage.class, LucideIcon.parameters()));
-        config.addItem(new SideNavItem(getTranslation("nav.menu.cache"), CachePage.class, LucideIcon.cache()));
+        if (accessManager.hasAccess(Functionality.MANAGE_PARAMETERS)) {
+            config.addItem(new SideNavItem(getTranslation("nav.menu.parameters"), ParameterPage.class, LucideIcon.parameters()));
+        }
+        if (accessManager.hasAccess(Functionality.MANAGE_CACHE)) {
+            config.addItem(new SideNavItem(getTranslation("nav.menu.cache"), CachePage.class, LucideIcon.cache()));
+        }
 
         SideNavItem security = new SideNavItem(getTranslation("nav.section.security"));
         security.setPrefixComponent(LucideIcon.security());
-        security.addItem(new SideNavItem(getTranslation("nav.menu.groups"), GroupPage.class, LucideIcon.users()));
-        security.addItem(new SideNavItem(getTranslation("nav.menu.users"), UserPage.class, LucideIcon.user()));
+        if (accessManager.hasAccess(Functionality.VIEW_GROUP)) {
+            security.addItem(new SideNavItem(getTranslation("nav.menu.groups"), GroupPage.class, LucideIcon.users()));
+        }
+        if (accessManager.hasAccess(Functionality.VIEW_USER)) {
+            security.addItem(new SideNavItem(getTranslation("nav.menu.users"), UserPage.class, LucideIcon.user()));
+        }
 
-        nav.addItem(config, security);
+        if (!config.getItems().isEmpty()) {
+            nav.addItem(config);
+        }
+        if (!security.getItems().isEmpty()) {
+            nav.addItem(security);
+        }
 
         RhSystemProperties.Session session = properties.getSession();
         SessionTimer sessionTimer = new SessionTimer(

@@ -75,6 +75,15 @@ class UserPersistenceTest {
         assertEquals("Admin Teste", admin.get().getFullName());
     }
 
+    @Test
+    void seedAdminBelongsToAnAdminGroupAndGetsEveryFunctionality() {
+        User admin = userRepository.findByUsername("admin.teste").orElseThrow();
+
+        assertTrue(admin.isAdmin(), "migration V20261001013000 must link admin.teste to an admin group");
+        assertEquals(java.util.Set.of(com.rhsystem.domain.model.Functionality.values()),
+                admin.getUserFunctionalities());
+    }
+
     // ── Round trips ───────────────────────────────────────────────────────────
 
     @Test

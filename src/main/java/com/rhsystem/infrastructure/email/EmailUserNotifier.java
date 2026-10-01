@@ -62,7 +62,8 @@ public class EmailUserNotifier implements UserNotifier {
                 + "Recebemos uma solicitação para redefinir a senha da sua conta (" + event.username() + ").\n"
                 + "Para criar uma nova senha, acesse o link abaixo:\n\n"
                 + link + "\n\n"
-                + "O link expira em " + properties.getActivationTokenValidityHours() + " horas.\n"
+                + "O link expira em " + properties.getPasswordResetTokenValidityMinutes() + " minutos e só o "
+                + "link mais recente funciona.\n"
                 + "Se você não solicitou, ignore este email.\n\n"
                 + "RH System");
         mailSender.send(message);

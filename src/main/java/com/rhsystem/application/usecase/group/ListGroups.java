@@ -1,5 +1,7 @@
 package com.rhsystem.application.usecase.group;
 
+import com.rhsystem.domain.model.Functionality.Roles;
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.rhsystem.domain.model.Sorting;
 import com.rhsystem.domain.model.grupo.Group;
 import com.rhsystem.domain.repository.GroupRepository;
@@ -11,6 +13,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
 
+@PreAuthorize("hasAnyRole('" + Roles.VIEW_GROUP + "', '" + Roles.CREATE_USER + "')")
 @AllArgsConstructor
 @Service
 public class ListGroups {

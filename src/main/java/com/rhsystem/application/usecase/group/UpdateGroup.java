@@ -1,5 +1,7 @@
 package com.rhsystem.application.usecase.group;
 
+import com.rhsystem.domain.model.Functionality.Roles;
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.rhsystem.application.dto.group.UpdateGroupCommand;
 import com.rhsystem.application.exception.BusinessException;
 import com.rhsystem.domain.model.grupo.Group;
@@ -8,6 +10,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@PreAuthorize("hasRole('" + Roles.CREATE_GROUP + "')")
 @AllArgsConstructor
 @Service
 public class UpdateGroup {

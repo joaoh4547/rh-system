@@ -45,7 +45,7 @@ class ActivationTokenPersistenceTest {
         em.flush();
         em.clear();
 
-        ActivationToken reloaded = tokenRepository.findByToken(token.getToken()).orElseThrow();
+        ActivationToken reloaded = tokenRepository.findByToken(token.getRawToken()).orElseThrow();
         assertEquals(admin.getId(), reloaded.getUser().getId());
         assertEquals(TokenPurpose.PASSWORD_RESET, reloaded.getPurpose());
         assertFalse(reloaded.isUsed());
@@ -65,7 +65,7 @@ class ActivationTokenPersistenceTest {
         em.flush();
         em.clear();
 
-        ActivationToken reloaded = tokenRepository.findByToken(token.getToken()).orElseThrow();
+        ActivationToken reloaded = tokenRepository.findByToken(token.getRawToken()).orElseThrow();
         assertTrue(reloaded.isUsed());
         assertFalse(reloaded.isValid());
     }
@@ -73,5 +73,42 @@ class ActivationTokenPersistenceTest {
     @Test
     void unknownTokenIsEmpty() {
         assertTrue(tokenRepository.findByToken("does-not-exist").isEmpty());
+    }
+
+    @Test
+    void databaseStoresOnlyTheHash() {
+        User admin = userRepository.findByUsername("admin.teste").orElseThrow();
+        ActivationToken token = new ActivationToken(admin,
+                LocalDateTime.now().plusHours(1), TokenPurpose.ACTIVATION);
+        tokenRepository.save(token);
+        em.flush();
+
+        Object stored = em.createNativeQuery("SELECT token FROM rh_activation_token WHERE id = :id")
+                .setParameter("id", token.getId())
+                .getSingleResult();
+
+        assertEquals(ActivationToken.hash(token.getRawToken()), stored);
+        assertTrue(tokenRepository.findByToken(String.valueOf(stored)).isEmpty(),
+                "the stored hash must not work as a link token");
+    }
+
+    @Test
+    void invalidateActiveTokensBurnsOnlyUnusedTokensOfThatPurpose() {
+        User admin = userRepository.findByUsername("admin.teste").orElseThrow();
+        ActivationToken reset1 = tokenRepository.save(new ActivationToken(admin,
+                LocalDateTime.now().plusMinutes(30), TokenPurpose.PASSWORD_RESET));
+        ActivationToken reset2 = tokenRepository.save(new ActivationToken(admin,
+                LocalDateTime.now().plusMinutes(30), TokenPurpose.PASSWORD_RESET));
+        ActivationToken activation = tokenRepository.save(new ActivationToken(admin,
+                LocalDateTime.now().plusHours(24), TokenPurpose.ACTIVATION));
+        em.flush();
+
+        int burned = tokenRepository.invalidateActiveTokens(admin, TokenPurpose.PASSWORD_RESET);
+        em.clear();
+
+        assertEquals(2, burned);
+        assertFalse(tokenRepository.findByToken(reset1.getRawToken()).orElseThrow().isValid());
+        assertFalse(tokenRepository.findByToken(reset2.getRawToken()).orElseThrow().isValid());
+        assertTrue(tokenRepository.findByToken(activation.getRawToken()).orElseThrow().isValid());
     }
 }

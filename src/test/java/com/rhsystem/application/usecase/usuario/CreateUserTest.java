@@ -117,7 +117,7 @@ class CreateUserTest {
         assertEquals("joao.silva", event.username());
         assertEquals("joao@example.com", event.email());
         assertEquals("João", event.firstName());
-        assertEquals(token.getToken(), event.activationToken());
+        assertEquals(token.getRawToken(), event.activationToken());
     }
 
     @Test
@@ -134,7 +134,7 @@ class CreateUserTest {
 
     @Test
     void storesDocumentsThroughFileStoragePort() {
-        byte[] content = "conteudo".getBytes(StandardCharsets.UTF_8);
+        byte[] content = "%PDF-1.7 conteudo".getBytes(StandardCharsets.UTF_8);
         when(fileStorage.store(content, "rg.pdf")).thenReturn("storage/rg.pdf");
         when(groupRepository.findAllById(Set.of())).thenReturn(List.of());
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -179,5 +179,31 @@ class CreateUserTest {
         assertTrue(keys.contains("error.email.invalid"));
         assertTrue(keys.contains("error.cpf.invalid"));
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsAttachmentWhoseContentIsNotAnAllowedTypeEvenIfNamedPdf() {
+        byte[] html = "<html><script>alert(1)</script></html>".getBytes(StandardCharsets.UTF_8);
+
+        ValidationException ex = assertThrows(ValidationException.class, () -> useCase.execute(command(null,
+                List.of(new DocumentUpload("RG", "rg.pdf", "application/pdf", html)))));
+
+        assertTrue(ex.getViolations().stream().map(Violation::messageKey).toList()
+                .contains("error.document.type"));
+        verify(fileStorage, never()).store(any(), any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void storedContentTypeComesFromMagicBytesNotFromTheClient() {
+        byte[] png = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n', 1, 2, 3};
+        when(fileStorage.store(png, "foto.pdf")).thenReturn("storage/foto.pdf");
+        when(groupRepository.findAllById(Set.of())).thenReturn(List.of());
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        User saved = useCase.execute(command(null,
+                List.of(new DocumentUpload("Foto", "foto.pdf", "application/pdf", png))));
+
+        assertEquals("image/png", saved.getDocuments().getFirst().getContentType());
     }
 }

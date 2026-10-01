@@ -1,5 +1,7 @@
 package com.rhsystem.application.usecase.usuario;
 
+import com.rhsystem.domain.model.Functionality.Roles;
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.rhsystem.application.exception.BusinessException;
 import com.rhsystem.domain.model.usuario.User;
 import com.rhsystem.domain.repository.UserRepository;
@@ -7,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Use case: removes a user. */
+@PreAuthorize("hasRole('" + Roles.DELETE_USER + "')")
 @Service
 public class RemoveUser {
 

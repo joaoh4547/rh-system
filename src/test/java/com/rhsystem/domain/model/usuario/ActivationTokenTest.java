@@ -17,8 +17,8 @@ class ActivationTokenTest {
         ActivationToken token = new ActivationToken(user,
                 LocalDateTime.now().plusHours(1), TokenPurpose.ACTIVATION);
 
-        assertNotNull(token.getToken());
-        assertEquals(36, token.getToken().length()); // canonical UUID
+        assertNotNull(token.getRawToken());
+        assertEquals(36, token.getRawToken().length()); // canonical UUID
         assertSame(user, token.getUser());
         assertFalse(token.isUsed());
         assertEquals(TokenPurpose.ACTIVATION, token.getPurpose());
@@ -29,7 +29,7 @@ class ActivationTokenTest {
         LocalDateTime exp = LocalDateTime.now().plusHours(1);
         ActivationToken a = new ActivationToken(new User(), exp, TokenPurpose.ACTIVATION);
         ActivationToken b = new ActivationToken(new User(), exp, TokenPurpose.ACTIVATION);
-        assertFalse(a.getToken().equals(b.getToken()));
+        assertFalse(a.getRawToken().equals(b.getRawToken()));
     }
 
     @Test
@@ -52,5 +52,18 @@ class ActivationTokenTest {
                 LocalDateTime.now().plusHours(1), TokenPurpose.ACTIVATION);
         token.setUsed(true);
         assertFalse(token.isValid());
+    }
+
+    @Test
+    void onlyTheSha256HashIsKeptInThePersistentField() {
+        ActivationToken token = new ActivationToken(new User(),
+                LocalDateTime.now().plusHours(1), TokenPurpose.ACTIVATION);
+
+        assertEquals(64, token.getTokenHash().length());
+        assertFalse(token.getTokenHash().contains(token.getRawToken()));
+        assertEquals(ActivationToken.hash(token.getRawToken()), token.getTokenHash());
+        // known vector: sha256("abc")
+        assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+                ActivationToken.hash("abc"));
     }
 }

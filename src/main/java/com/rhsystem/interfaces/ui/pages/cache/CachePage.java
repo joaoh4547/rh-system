@@ -1,5 +1,7 @@
 package com.rhsystem.interfaces.ui.pages.cache;
 
+import com.rhsystem.domain.model.Functionality.Roles;
+import jakarta.annotation.security.RolesAllowed;
 import com.rhsystem.application.port.CacheDetail;
 import com.rhsystem.application.port.CacheEntry;
 import com.rhsystem.application.usecase.cache.ClearCache;
@@ -25,13 +27,12 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import jakarta.annotation.security.PermitAll;
 
 import java.util.List;
 
 @Route(value = "cache", layout = MainLayout.class)
 @PageTitle("Gerenciamento de Cache")
-@PermitAll
+@RolesAllowed(Roles.MANAGE_CACHE)
 public class CachePage extends VerticalLayout {
 
     private final GetCacheStats getCacheStats;

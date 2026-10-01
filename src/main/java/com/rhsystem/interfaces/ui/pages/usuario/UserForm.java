@@ -1,6 +1,7 @@
 package com.rhsystem.interfaces.ui.pages.usuario;
 
 import com.rhsystem.application.dto.usuario.DocumentUpload;
+import com.rhsystem.domain.service.AttachmentPolicy;
 import com.rhsystem.domain.model.grupo.Group;
 import com.rhsystem.domain.model.usuario.UserStatus;
 import com.rhsystem.interfaces.ui.component.DocumentField;
@@ -97,6 +98,10 @@ public class UserForm extends Form<UserFormModel> {
         i18n.setDropFiles(drop);
         upload.setWidthFull();
         upload.setI18n(i18n);
+        // UX limits only — CreateUser re-validates on the server (magic bytes, size, count)
+        upload.setMaxFileSize(AttachmentPolicy.MAX_SIZE_BYTES);
+        upload.setMaxFiles(AttachmentPolicy.MAX_FILES);
+        upload.setAcceptedFileTypes("application/pdf", "image/png", "image/jpeg", ".pdf", ".png", ".jpg", ".jpeg");
     
     }
 

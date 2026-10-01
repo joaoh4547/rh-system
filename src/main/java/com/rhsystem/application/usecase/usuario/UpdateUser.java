@@ -1,5 +1,7 @@
 package com.rhsystem.application.usecase.usuario;
 
+import com.rhsystem.domain.model.Functionality.Roles;
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.rhsystem.application.dto.usuario.UpdateUserCommand;
 import com.rhsystem.application.exception.BusinessException;
 import com.rhsystem.application.validation.CommandValidator;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Use case: updates an existing user's data. */
+@PreAuthorize("hasRole('" + Roles.CREATE_USER + "')")
 @Service
 public class UpdateUser {
 

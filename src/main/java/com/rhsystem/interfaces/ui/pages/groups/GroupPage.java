@@ -1,5 +1,9 @@
 package com.rhsystem.interfaces.ui.pages.groups;
 
+import com.rhsystem.application.port.AccessManager;
+import com.rhsystem.domain.model.Functionality;
+import com.rhsystem.domain.model.Functionality.Roles;
+import jakarta.annotation.security.RolesAllowed;
 import com.rhsystem.application.dto.group.EnableGroupCommand;
 import com.rhsystem.application.usecase.group.*;
 import com.rhsystem.domain.model.Sorting;
@@ -17,7 +21,6 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import jakarta.annotation.security.PermitAll;
 import lombok.AllArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.ObjectProvider;
@@ -37,12 +40,12 @@ import java.util.stream.Stream;
  * - Support for dynamic translations for page titles, subtitles, and labels.
  * - Integration with the GetGroupSummary use case to display group statistics.
  * <p>
- * This class is secured with `@PermitAll`, meaning it is accessible to all users.
+ * Requires the VIEW_GROUP functionality; actions are shown according to the user's permissions.
  * The route for navigating to this page is "groups".
  */
 @Route(value = "groups", layout = MainLayout.class)
 @PageTitle("Groups - RH System")
-@PermitAll
+@RolesAllowed(Roles.VIEW_GROUP)
 @AllArgsConstructor
 public class GroupPage extends BasePage<Group> {
 
@@ -52,6 +55,7 @@ public class GroupPage extends BasePage<Group> {
     private final GetGroup getGroup;
     private final EnableGroup enableGroup;
     private final ObjectProvider<GroupFormDialog> groupFormDialog;
+    private final AccessManager accessManager;
 
 
     @Override
@@ -112,13 +116,23 @@ public class GroupPage extends BasePage<Group> {
 
 
     @Override
+    protected boolean insertVisible() {
+        return accessManager.hasAccess(Functionality.CREATE_GROUP);
+    }
+
+    @Override
     public boolean canEdit(Group obj) {
-        return obj.isEnable();
+        return obj.isEnable() && accessManager.hasAccess(Functionality.CREATE_GROUP);
     }
 
     @Override
     public boolean canDelete(Group obj) {
-        return true;
+        return accessManager.hasAccess(Functionality.DELETE_GROUP);
+    }
+
+    @Override
+    protected boolean canEnableDisable(Group obj) {
+        return accessManager.hasAccess(Functionality.ENABLE_DISABLE_GROUP);
     }
 
 

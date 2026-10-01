@@ -32,11 +32,19 @@ class RichTextSanitizerTest {
     }
 
     @Test
-    void stripsEncodedScriptInsteadOfLettingItThrough() {
-        // Entidades são decodificadas ANTES da sanitização
+    void encodedScriptStaysInertEscapedText() {
+        // No manual pre-decoding: escaped markup is kept as escaped TEXT (shown, never executed)
         String out = RichTextSanitizer.sanitize("&lt;script&gt;alert(1)&lt;/script&gt;<p>x</p>");
         assertFalse(out.contains("<script"));
-        assertFalse(out.contains("alert"));
+        assertTrue(out.contains("&lt;script&gt;"));
+        assertTrue(out.contains("<p>x</p>"));
+    }
+
+    @Test
+    void numericEntityEncodingIsNotTurnedIntoMarkup() {
+        String out = RichTextSanitizer.sanitize("&#60;img src=x onerror=alert(1)&#62;");
+        assertFalse(out.contains("<img"));
+        assertFalse(out.contains("onerror=alert(1)>"));
     }
 
     @Test

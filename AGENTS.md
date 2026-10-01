@@ -8,7 +8,7 @@ Whenever a change affects anything documented here — new/renamed classes, use 
 
 ## Stack
 
-Java 27, Spring Boot 4.1.x (`spring-boot-starter-parent` 4.1.1), Vaadin 25.3.x, PostgreSQL 17, Flyway, Lombok, Hazelcast embedded (distributed cache). Tests use H2 in-memory (PostgreSQL compatibility mode) — the real database is never touched by tests. Both the Spring Boot Maven plugin and Surefire pass `--add-opens`/`--add-exports` JVM arguments required by Hazelcast — keep them when touching `pom.xml`. **Virtual threads are on** (`spring.threads.virtual.enabled: true`): Tomcat requests, `applicationTaskExecutor` and scheduling run on virtual threads. **Java 27 notes:** Spring Boot 4.1.1 officially documents Java ≤ 26 (27 is official from 4.2) — we run 27 anyway; `pom.xml` overrides `lombok.version` to 1.18.48 (first release with JDK 27 support) and `hazelcast.version` to 5.7.0 (the Boot BOM pins 5.5.0 for both `hazelcast` and `hazelcast-spring`); `-Dnet.bytebuddy.experimental=true` is set in Surefire's `argLine` (Mockito) and programmatically in `RhSystemApplication.main` (Hibernate proxies) because Byte Buddy does not officially recognize class file 71 yet — remove both once the Boot BOM ships a Byte Buddy with JDK 27 support.
+Java 27, Spring Boot 4.1.x (`spring-boot-starter-parent` 4.1.1), Vaadin 25.3.x, PostgreSQL 17, Flyway, Lombok, Hazelcast embedded (distributed cache). Tests use H2 in-memory (PostgreSQL compatibility mode) — the real database is never touched by tests. Both the Spring Boot Maven plugin and Surefire pass `--add-opens`/`--add-exports` JVM arguments required by Hazelcast — keep them when touching `pom.xml`. **Virtual threads are on** (`spring.threads.virtual.enabled: true`): Tomcat requests, `applicationTaskExecutor` and scheduling run on virtual threads. **Java 27 notes:** Spring Boot 4.1.1 officially documents Java ≤ 26 (27 is official from 4.2) — we run 27 anyway; `pom.xml` overrides `lombok.version` to 1.18.48 (first release with JDK 27 support) and `hazelcast.version` to 5.7.0 (the Boot BOM pins 5.5.0 for both `hazelcast` and `hazelcast-spring`); **security overrides of the Boot 4.1.1 BOM** (remove once a newer Boot ships equal or newer versions): `tomcat.version` 11.0.26 (CVE-2026-65182/68525/65905 + WebSocket CVEs fixed in 11.0.26), `jackson-bom.version` 3.1.7 and `jackson-2-bom.version` 2.21.7 (CVE-2026-91777/91776/68497/83557/19032); `spring-boot-devtools` is `optional`; `-Dnet.bytebuddy.experimental=true` is set in Surefire's `argLine` (Mockito) and programmatically in `RhSystemApplication.main` (Hibernate proxies) because Byte Buddy does not officially recognize class file 71 yet — remove both once the Boot BOM ships a Byte Buddy with JDK 27 support.
 
 ## Commands
 
@@ -51,7 +51,7 @@ Code identifiers are in **English** (classes, methods, columns); UI texts remain
 
 - **`User`** (`rh_user`) — fields `firstName`, `lastName`, `username` (immutable, `updatable = false`), `email`, `password` (BCrypt hash), `status`, `cpf` (11 digits), `rg`, embedded `Address`, `createdAt`/`updatedAt`/`termsAcceptedAt`. Unique constraints on username, email, cpf and rg. Relations: `@OneToMany documents` (cascade ALL + orphanRemoval), `@ManyToMany groups` (join table `rh_user_group`), `@ElementCollection functionalities` (`rh_user_functionality`). Behavior methods: `activate(passwordHash)` (sets password + status ACTIVE), `resetPassword(hash)`, `acceptTerms()`/`termsAccepted()`, `addDocument(doc)`, `getFullName()`, `isAdmin()` (any group with admin flag), `getUserFunctionalities()` (see Permissions).
 - **`Group`** (`rh_group`) — `name`, `description`, `active`, `admin`, `@ElementCollection functionalities` (`rh_group_functionality`). Uses Lombok `@Builder`. `equals`/`hashCode` are id-based (entity identity), so instances from different sessions/caches compare equal — required by the groups `Shuttle` and `Set<Group>` form models.
-- **`ActivationToken`** (`rh_activation_token`) — UUID `token`, `@OneToOne user`, `expiresAt`, `used`, `purpose` (`TokenPurpose.ACTIVATION` or `PASSWORD_RESET`). `isValid()` = not used and not expired.
+- **`ActivationToken`** (`rh_activation_token`) — column `token` stores **only the SHA-256 hex of the token** (`tokenHash`); the raw UUID lives in the `@Transient rawToken`, available only on freshly created instances (used to build the email link). `ActivationToken.hash(raw)` is the hashing function. `@ManyToOne user` (a user has several tokens over time), `expiresAt`, `used`, `purpose` (`TokenPurpose.ACTIVATION` or `PASSWORD_RESET`). `isValid()` = not used and not expired.
 - **`Document`** (`rh_user_document`) — user attachment metadata: `description`, `fileName`, `contentType`, `storagePath`, `size`, `uploadedAt`. Binary content lives on disk (see `FileStorage`).
 - **`Address`** — `@Embeddable` (street, neighborhood, streetNumber, complement, postalCode).
 - **`UserStatus`** — `ACTIVE`, `INACTIVE`, `BLOCKED`, `PENDING_CONFIRMATION`; each value carries an i18n label key (`status.*`).
@@ -64,30 +64,31 @@ Cached entities (`User`, `Group`, `Document`, `Address`) implement `Serializable
 
 - `UserRepository` — save, findById/findByEmail/findByUsername, `findByIdWithGroups` (fetches the lazy `groups` via `@EntityGraph` — used by the edit form), findAll, `findPaginated(offset, limit, sorting)`, count, countByStatus, delete, existsByUsername/Email/Cpf/Rg.
 - `GroupRepository` — `findAllPaginated(limit, offset, sorting)`, `findAll`, `findAllActive` (active only, ordered by name), `findAllById(ids)`, count, countActive, save, findById, `findByIdWithFunctionalities` (fetches the lazy element collection via `@EntityGraph`).
-- `ActivationTokenRepository` — save, findByToken.
+- `ActivationTokenRepository` — save, `findByToken(rawToken)` (the adapter hashes it before querying `findByTokenHash`), `invalidateActiveTokens(user, purpose)` (JPQL bulk update marking unused tokens as used).
 
 ### Domain services (static utilities)
 
 - **`UsernameGenerator.generate(first, last, existsCheck)`** — lowercase, strips accents, skips Portuguese connectives (de, da, do, dos, das, e, di, du, del, la, las, los), joins as `firstname.lastname`, appends numeric suffix (`.2`, `.3`, …) while `existsCheck` returns true.
 - **`CpfValidator`** — `isValid` (check digits), `digitsOnly` (normalization).
+- **`PasswordPolicy`** — `MIN_LENGTH` 8 / `MAX_LENGTH` 72 (BCrypt input limit; enforced by `@Size` on `ActivationCommand`) and `check(password, username, email)`: rejects a local blocklist of common passwords (`error.password.common`) and passwords equal to username, email or email local part (`error.password.personal`). Used by `ActivateUser`, `ResetPassword` and `DefaultAdminCredentialsGuard`.
+- **`AttachmentPolicy`** — attachment allowlist by **magic bytes** (PDF, PNG, JPEG — client MIME/extension not trusted), `MAX_SIZE_BYTES` 5 MB, `MAX_FILES` 10. Used by `CreateUser` (server-side) and `UserForm` (UX limits).
 
 ## Application Layer
 
 ### Use cases
 
-`@Service` classes with a single `execute(...)` method, `@Transactional` (or `readOnly = true` for queries). One class per operation.
+`@Service` classes with a single `execute(...)` method, `@Transactional` (or `readOnly = true` for queries). One class per operation. **Authorization (defense in depth):** every use case behind a protected screen carries `@PreAuthorize("hasRole('" + Roles.X + "')")` (Spring method security, `@EnableMethodSecurity` in `SecurityConfig`): users `CREATE_USER` (Create/UpdateUser), `DELETE_USER` (RemoveUser), `VIEW_USER` (ListUsers, GetUser, GetUserSummary); groups `CREATE_GROUP` (Create/UpdateGroup), `ENABLE_DISABLE_GROUP` (EnableGroup), `VIEW_GROUP` (GetGroup, GetGroupSummary), `ListGroups` = `VIEW_GROUP` or `CREATE_USER` (user form lists groups); `MANAGE_PARAMETERS` (List/CountParameters, UpdateParameter); `MANAGE_CACHE` (all cache use cases). Anonymous flows (ActivateUser, ResetPassword, RequestPasswordReset) and self-service ones (GetUserByUserName, AcceptTerms) are not annotated. JSR-250 is intentionally **not** enabled for method security: views use `@RolesAllowed` for Vaadin's checker, and `jsr250Enabled` would AOP-proxy the view classes.
 
 `application/usecase/usuario/`:
 
 | Use case | Behavior |
 |---|---|
-| `CreateUser` | Normalizes CPF (`digitsOnly`) and RG (`alphanumericOnly`), collects structural + duplicate (email/cpf/rg) violations, generates username, status `PENDING_CONFIRMATION`, stores documents via `FileStorage`, resolves `groupIds` to `Group` entities via `GroupRepository.findAllById` and sets them on the user, saves, creates `ActivationToken` (validity from `rh-system.ativacao-token-validade-horas`), publishes `UserCreated` via `DomainEventPublisher` (the email is sent by `UserNotificationListener` after commit). |
+| `CreateUser` | Normalizes CPF (`digitsOnly`) and RG (`alphanumericOnly`), collects structural + duplicate (email/cpf/rg) violations, generates username, status `PENDING_CONFIRMATION`, validates attachments with `AttachmentPolicy` (type by magic bytes, size, count — `error.document.type/size/too.many`), stores documents via `FileStorage` with the **detected** content type, resolves `groupIds` to `Group` entities via `GroupRepository.findAllById` and sets them on the user, saves, creates `ActivationToken` (validity from `rh-system.ativacao-token-validade-horas`), publishes `UserCreated` via `DomainEventPublisher` (the email is sent by `UserNotificationListener` after commit). |
 | `UpdateUser` | Loads by id, duplicate checks only when the value changed, updates fields + status + address, replaces the group membership from `groupIds` (`GroupRepository.findAllById`, empty/null clears all groups), sets `updatedAt`. Username and documents are not updated here. |
-| `ActivateUser` | Validates `ActivationCommand`, loads token, requires purpose `ACTIVATION` and `isValid()`, calls `user.activate(encodedPassword)`, marks token used. |
-| `RequestPasswordReset` | Silent no-op if email is blank or unknown (prevents user enumeration); otherwise creates `PASSWORD_RESET` token and publishes `PasswordResetRequested` (email sent after commit by `UserNotificationListener`). |
+| `ActivateUser` | Validates `ActivationCommand` (password 8..72), loads token by raw value, requires purpose `ACTIVATION` and `isValid()`, applies `PasswordPolicy.check` (token is kept if the password is rejected), calls `user.activate(encodedPassword)`, marks token used. |
+| `RequestPasswordReset` | Silent no-op if email is blank or unknown (prevents user enumeration); otherwise invalidates the user's previous unused `PASSWORD_RESET` tokens (only the newest link works), creates a new one valid for `rh-system.password-reset-token-validity-minutes` (default 30) and publishes `PasswordResetRequested` (email sent after commit by `UserNotificationListener`). |
 | `ResetPassword` | Same shape as `ActivateUser` but purpose `PASSWORD_RESET`; calls `user.resetPassword(...)`. |
-| `ValidateLogin` | Returns `LoginResult`: `INVALID_CREDENTIALS` (unknown user, not ACTIVE, or bad password), `TERMS_PENDING` (valid but terms not accepted), `OK`. |
-| `AcceptTerms` | Sets `termsAcceptedAt` for the username. |
+| `AcceptTerms` | Sets `termsAcceptedAt` for the username (called by `TermsView` with the principal from the security context). |
 | `ListUsers` | `execute()` (all) and `execute(offset, limit, sorting)` (paginated stream). |
 | `GetUserSummary` | KPI record `UserSummary(total, active, pending, blocked)`. |
 | `GetUser` | Loads by id with the `groups` collection fetched (`findByIdWithGroups`) — used by `UserPage.buildForm` so the edit dialog reads memberships without `LazyInitializationException`; throws `error.user.not.found`. |
@@ -109,7 +110,7 @@ Groups are never deleted — they are disabled (`GroupPage.remove()` is intentio
 
 ### DTOs / commands (`application/dto`, all records)
 
-`CreateUserCommand`, `UpdateUserCommand` (adds `id` + `status`; both carry `groupIds` for group membership), `ActivationCommand` (token + password + confirmation, `@FieldsMatch`, shared by activation and password reset), `AddressDTO`, `DocumentUpload` (description, fileName, contentType, byte[] content), `UserSummary`, `LoginResult` enum, `CreateGroupCommand`, `UpdateGroupCommand`, `EnableGroupCommand`, `GroupSummary`. Constraint messages on commands are i18n keys.
+`CreateUserCommand`, `UpdateUserCommand` (adds `id` + `status`; both carry `groupIds` for group membership), `ActivationCommand` (token + password 8..72 + confirmation, `@FieldsMatch`, shared by activation and password reset), `AddressDTO`, `DocumentUpload` (description, fileName, contentType, byte[] content), `UserSummary`, `CreateGroupCommand`, `UpdateGroupCommand`, `EnableGroupCommand`, `GroupSummary`. Constraint messages on commands are i18n keys.
 
 ### Output ports (`application/port`)
 
@@ -122,22 +123,24 @@ Groups are never deleted — they are disabled (`GroupPage.remove()` is intentio
 - Events are immutable records implementing `DomainEvent` (`occurredOn()`), named in the past tense, carrying only values (never JPA entities) and built with `of(User, token)`: `UserCreated(userId, username, email, firstName, activationToken, occurredOn)`, `PasswordResetRequested(userId, username, email, firstName, resetToken, occurredOn)`. Their `toString()` deliberately omits the token.
 - `UserNotificationListener` (`@Component`): `@Async` + `@TransactionalEventListener(phase = AFTER_COMMIT, fallbackExecution = true)` handlers that call `UserNotifier`. Effects: the email goes out only if the use case's transaction commits (rollback = no email; the token is already persisted when the user clicks the link); events published outside a transaction are still handled; SMTP runs off the request thread, and a failure is logged without undoing the user creation.
 - `AsyncConfig` (`infrastructure/config`): `@EnableAsync` + `AsyncConfigurer` with a `SimpleAsyncTaskExecutor` on **virtual threads** (`async-N`, 30s graceful termination on shutdown). Declared via `AsyncConfigurer` rather than as an `Executor` bean so Boot's `applicationTaskExecutor` auto-configuration stays active. The uncaught-exception handler logs class/method only — never parameters (events carry tokens).
-- **`AccessManager.hasAccess/hasAccessAny/hasAccessAll(Functionality...)`** → implemented by `AppAccessManager` (reads the authenticated user via Vaadin `AuthenticationContext` + `UserRepository`).
+- **`AccessManager.hasAccess/hasAccessAny/hasAccessAll(Functionality...)`** → implemented by `AppAccessManager` via Vaadin `AuthenticationContext.hasRole/hasAnyRole/hasAllRoles` (the authorities built at login — consistent with `@RolesAllowed`/`@PreAuthorize`, no DB round-trip; permission changes apply at the next login). Drives what the UI shows (menu entries, new/edit/delete/enable actions); enforcement is done by the annotations.
 - **`CacheManagementPort`** → `HazelcastCacheManagementAdapter`: provides `getCacheStats` (entry counts), `getCacheDetails` (per-region `CacheDetail` built from Hazelcast `LocalMapStats`: owned/backup entry counts, owned/backup memory cost, hits, get operation count), `getCacheEntries(name)` (per-entry `CacheEntry` — key, value type, value preview, per-entry memory cost and hits, read from the `IMap` key set via `getEntryView`) and `clearCache`/`clearAllCaches` (Hazelcast `IMap.clear`). Only the *evict* action is exposed to the user (put/remove operation counts were dropped since the caching pattern uses `@CacheEvict(allEntries=true)` = `IMap.clear`, so per-key put/remove metrics are meaningless). `CachePage` shows summary `StatCard`s (active caches, total entries, memory, hits) plus a grid of caches; expanding a row (`setItemDetailsRenderer`, click to toggle) reveals the aggregate metric cards and a nested grid listing every stored entry of that cache.
 
 ## Security & Permissions
 
-Spring Security integrated with Vaadin via `VaadinSecurityConfigurer` (`SecurityConfig`); `LoginView` is registered as the login view. Views require authentication by default; `@AnonymousAllowed` marks public views. Passwords are BCrypt (`PasswordEncoder` bean).
+Spring Security integrated with Vaadin via `VaadinSecurityConfigurer` (`SecurityConfig`); `LoginView` is registered as the login view. Views require authentication by default; `@AnonymousAllowed` marks public views, `@RolesAllowed(Roles.X)` restricts views to a functionality. `@EnableMethodSecurity` enables `@PreAuthorize` on use cases. Extra headers: `Referrer-Policy: strict-origin-when-cross-origin` and a restrictive `Permissions-Policy` (Spring already sends nosniff, `X-Frame-Options: DENY`, cache-control and HSTS on HTTPS). Passwords are BCrypt (`PasswordEncoder` bean). The full audit with status per finding is in `SECURITY_REVIEW.md`.
 
-**Login flow** (`LoginView`): the form is NOT submitted directly to Spring Security. It first calls `ValidateLogin`; on `TERMS_PENDING` it opens the terms-of-use dialog (accept → `AcceptTerms.execute(username)`); only on success does it submit a programmatic POST to `/login` (JS-injected form), letting Spring Security create the session. `AppUserDetailsService` loads the user: `disabled` unless status `ACTIVE`, `accountLocked` when `BLOCKED`, authorities from `getUserFunctionalities()`.
+**Login flow** (`LoginView`): `LoginForm.setAction("login")` — a **native POST** to Spring Security; the password never goes through the Vaadin server round-trip. Failures return `/login?error` with a generic message. `AppUserDetailsService` loads the user (generic `UsernameNotFoundException` message without the username; `DaoAuthenticationProvider` hides it and equalizes timing): `disabled` unless status `ACTIVE`, `accountLocked` when `BLOCKED`, authorities from `getUserFunctionalities()`.
 
-**Permissions model**: the `Functionality` enum (`domain/model`) is the unit of permission, each value with a `Category` (`USER`, `GROUP`) and an i18n label; `getFunctionalityByCategory()` groups them for UI rendering. Current values: `CREATE_USER`, `VIEW_USER`, `DELETE_USER`, `CREATE_GROUP`, `VIEW_GROUP`, `DELETE_GROUP`, `ENABLE_DISABLE_GROUP`.
+**Terms of use** are enforced **after** login by `TermsAcceptanceGuard` (`interfaces/ui/security`, a `VaadinServiceInitListener` adding a global `BeforeEnterListener`): while the authenticated user has not accepted the terms, every navigation is rerouted to `TermsView` (`terms`, `@PermitAll`). Accept → `AcceptTerms.execute(principal)` + a `VaadinSession` flag (DB checked once per session); decline → logout.
+
+**Permissions model**: the `Functionality` enum (`domain/model`) is the unit of permission, each value with a `Category` (`USER`, `GROUP`) and an i18n label; `getFunctionalityByCategory()` groups them for UI rendering. Categories `USER`, `GROUP`, `SYSTEM`. Current values: `CREATE_USER`, `VIEW_USER`, `DELETE_USER`, `CREATE_GROUP`, `VIEW_GROUP`, `DELETE_GROUP`, `ENABLE_DISABLE_GROUP`, `MANAGE_PARAMETERS`, `MANAGE_CACHE`. `Functionality.Roles` holds compile-time constants with the same names for annotations (`FunctionalityTest` keeps them in sync with the enum) — add a constant whenever a value is added.
 
 - Effective permissions (`User.getUserFunctionalities()`): if any of the user's groups has `admin = true` → ALL functionalities; otherwise direct functionalities ∪ functionalities of **active** groups.
 - At login each functionality becomes a `ROLE_<NAME>` authority (`Functionality.asRole()`).
 - In application/UI code check access through the `AccessManager` port, not through Spring's `SecurityContext`.
 
-Seed user from V3 migration: `admin.teste` / `admin123` (already ACTIVE).
+Seed user from V3 migration: `admin.teste` / `admin123` (already ACTIVE); migration V20261001013000 creates an admin group (`Administradores`) if none exists and links `admin.teste` to it. **Outside the `dev`/`test` profiles** `DefaultAdminCredentialsGuard` (`ApplicationRunner`) checks at startup whether `admin.teste` still has the published password: if `ADMIN_INITIAL_PASSWORD` is set (and passes `PasswordPolicy`) it becomes the new password, otherwise the user is `BLOCKED`.
 
 ## UI Layer (Vaadin 25)
 
@@ -149,11 +152,14 @@ Seed user from V3 migration: `admin.teste` / `admin123` (already ACTIVE).
 | `activate/{token}` | `ActivationView` (`HasUrlParameter`) | `@AnonymousAllowed` |
 | `forgot-password` | `ForgotPasswordView` | `@AnonymousAllowed` |
 | `reset-password/{token}` | `ResetPasswordView` (`HasUrlParameter`) | `@AnonymousAllowed` |
-| `usuarios` | `UserPage` | `@PermitAll`, layout `MainLayout` |
-| `groups` | `GroupPage` | `@PermitAll`, layout `MainLayout` |
+| `terms` | `TermsView` (terms of use after login) | `@PermitAll` |
+| `usuarios` | `UserPage` | `@RolesAllowed(VIEW_USER)`, layout `MainLayout` |
+| `groups` | `GroupPage` | `@RolesAllowed(VIEW_GROUP)`, layout `MainLayout` |
+| `parameters` | `ParameterPage` | `@RolesAllowed(MANAGE_PARAMETERS)`, layout `MainLayout` |
+| `cache` | `CachePage` | `@RolesAllowed(MANAGE_CACHE)`, layout `MainLayout` |
 | `editor-demo`, `lucide-demo` | demo pages | `MainLayout` |
 
-`MainLayout` is an `AppLayout` with drawer navigation (`SideNav` with sections Ferramentas / Configurações / Segurança), user panel (avatar + full name via `GetUserByUserName`), and logout via `AuthenticationContext.logout()`. Some drawer items are placeholders without routes.
+`MainLayout` is an `AppLayout` with drawer navigation (`SideNav` with sections Ferramentas / Configurações / Segurança), user panel (avatar + full name via `GetUserByUserName`), and logout via `AuthenticationContext.logout()`. Menu entries are only added when `AccessManager` grants the matching functionality (empty sections are hidden). Pages hide/disable actions the same way (`insertVisible`, `canEdit`, `canDelete`, and `DataEditor.canEnableDisable` for the enable/disable actions). Some drawer items are placeholders without routes.
 
 ### CRUD base classes (`interfaces/ui/shared`)
 
@@ -215,7 +221,7 @@ When adding rules: new message keys go in both `i18n/messages.properties` and `m
 
 PostgreSQL 17. Flyway migrations in `src/main/resources/db/migration/` (`baseline-on-migrate: true`). Older files use `V{n}__{description}.sql`; **new migrations use timestamp versions** `V{yyyyMMddHHmmss}__{description}.sql` (e.g., `V20260703174848__...`). Schema is managed exclusively through Flyway (`ddl-auto: validate`, `open-in-view: false`). When adding entities, always create a new migration file.
 
-Current migrations: V1 init, V2 usuario, V3 seed admin user, V4 token purpose, V5 terms, V6 grupo, V7 rename to English/`rh_` prefix, V20260703174848 user↔group and user↔functionality tables, V20260704231443 convert Portuguese enum values to English (`ATIVO`→`ACTIVE`, token `ATIVACAO`→`ACTIVATION`; V7 renamed columns but not values — a fresh database would break JPA enum mapping without this).
+Current migrations: V1 init, V2 usuario, V3 seed admin user, V4 token purpose, V5 terms, V6 grupo, V7 rename to English/`rh_` prefix, V20260703174848 user↔group and user↔functionality tables, V20260704231443 convert Portuguese enum values to English (`ATIVO`→`ACTIVE`, token `ATIVACAO`→`ACTIVATION`; V7 renamed columns but not values — a fresh database would break JPA enum mapping without this), V20261001013000 seed admin group + link `admin.teste` (idempotent), **V20261001013100 Java migration** (`src/main/java/db/migration`) re-hashing existing tokens to SHA-256 — Java because PostgreSQL and H2 hash functions differ; Flyway picks Java migrations from the same `db/migration` location.
 
 Tables (English columns since V7): `rh_user`, `rh_user_document`, `rh_activation_token`, `rh_group`, `rh_group_functionality`, `rh_user_group`, `rh_user_functionality`.
 
@@ -235,13 +241,16 @@ Hazelcast **embedded** (`CacheConfig` in `infrastructure/config`) via Spring Cac
 
 ## Configuration
 
-`RhSystemProperties` (`@ConfigurationProperties(prefix = "rh-system")`): `baseUrl`, `mailFrom`, `activationTokenValidityHours`, `storageDir`, nested `cache` (clusterName, members, port, ttlSeconds, maxSize), nested `mail` (`async`). `application.yml` also sets: `spring.threads.virtual.enabled: true`, `open-in-view: false`, SMTP with STARTTLS required, logging `com.rhsystem: DEBUG`.
+`RhSystemProperties` (`@ConfigurationProperties(prefix = "rh-system")`): `baseUrl`, `mailFrom`, `activationTokenValidityHours`, `passwordResetTokenValidityMinutes` (30), `storageDir`, nested `cache` (clusterName, members, port, ttlSeconds, maxSize), `session`, `aes`. `application.yml` (production-safe base) also sets: `spring.profiles.default: dev`, `spring.threads.virtual.enabled: true`, `open-in-view: false`, SMTP with STARTTLS required, `server.forward-headers-strategy: native` (behind nginx), session cookie `http-only`, `same-site: lax`, `secure: ${SESSION_COOKIE_SECURE:true}`, logging `com.rhsystem: INFO`, and **no default DB credentials** (fail-fast).
+
+**Profiles:** `application-dev.yml` (active automatically when no profile is given — IDE/`mvnw`) restores the dev conveniences: DB `postgres`/`postgres`, `format_sql`, non-secure cookie (http://localhost), `com.rhsystem: DEBUG`. The Docker image sets `SPRING_PROFILES_ACTIVE=prod` (no `application-prod.yml` needed: base values apply, and `DefaultAdminCredentialsGuard` runs). `test` profile: H2, cache off, a test-only AES key.
 
 ### Environment variables
 
 | Variable | Default |
 |---|---|
-| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | `localhost`, `5432`, `rh_system`, `postgres`, `postgres` |
+| `DB_HOST`, `DB_PORT`, `DB_NAME` | `localhost`, `5432`, `rh_system` |
+| `DB_USER`, `DB_PASSWORD` | **no default** (dev profile: `postgres`/`postgres`) |
 | `SERVER_PORT` | `8080` |
 | `MAIL_HOST`, `MAIL_PORT` | `smtp.gmail.com`, `587` |
 | `MAIL_USERNAME`, `MAIL_PASSWORD` | (empty) — requires Gmail App Password |
@@ -253,10 +262,14 @@ Hazelcast **embedded** (`CacheConfig` in `infrastructure/config`) via Spring Cac
 | `HZ_MEMBERS` | (empty) — comma-separated `host[:port]` list; empty = multicast discovery |
 | `HZ_PORT` | `5701` |
 | `CACHE_TTL_SECONDS` | `600` |
+| `SESSION_COOKIE_SECURE` | `true` (dev profile: `false`; set `false` in `.env` only to test the Docker stack over http) |
+| `PASSWORD_RESET_TOKEN_MINUTES` | `30` |
+| `ADMIN_INITIAL_PASSWORD` | (empty) — non-dev only: replaces the seed admin's default password, else the seed user is blocked |
+| `SPRING_PROFILES_ACTIVE` | unset → `dev`; Docker image: `prod` |
 
 ## Docker Deployment
 
-`Dockerfile` is multi-stage (JDK 27 Maven build with `-Pproduction`, then JRE 27 runtime; `JAVA_TOOL_OPTIONS` carries the Hazelcast `--add-opens` flags plus `--enable-final-field-mutation=ALL-UNNAMED`). `docker-compose.yml` runs the full stack: `postgres`, `app1` + `app2` (defined via the `x-app-common` YAML anchor — Hazelcast TCP-IP discovery through `HZ_MEMBERS: app1:5701,app2:5701`, shared `app_storage` volume for document uploads), and `lb` (nginx on port 8080, config in `nginx.conf`). The nginx upstream uses `ip_hash` for sticky sessions and forwards WebSocket upgrade headers for Vaadin Push. Note: with `ip_hash`, requests from one client IP always land on the same instance — to see both instances locally, test from different IPs or temporarily switch the upstream to `least_conn` (breaks session affinity).
+`Dockerfile` is multi-stage (JDK 27 Maven build with `-Pproduction`, then JRE 27 runtime running as the non-root user `rhsystem`, `SPRING_PROFILES_ACTIVE=prod`, `/app/storage` owned by that user; `JAVA_TOOL_OPTIONS` carries the Hazelcast `--add-opens` flags plus `--enable-final-field-mutation=ALL-UNNAMED`). `nginx.conf`: `server_tokens off`, `client_max_body_size 10m` (attachments are ≤ 5 MB). `docker-compose.yml` runs the full stack: `postgres`, `app1` + `app2` (defined via the `x-app-common` YAML anchor — Hazelcast TCP-IP discovery through `HZ_MEMBERS: app1:5701,app2:5701`, shared `app_storage` volume for document uploads), and `lb` (nginx on port 8080, config in `nginx.conf`). The nginx upstream uses `ip_hash` for sticky sessions and forwards WebSocket upgrade headers for Vaadin Push. Note: with `ip_hash`, requests from one client IP always land on the same instance — to see both instances locally, test from different IPs or temporarily switch the upstream to `least_conn` (breaks session affinity).
 
 ## Testing
 
@@ -264,10 +277,11 @@ All tests run against **in-memory H2** (PostgreSQL compatibility mode), never th
 
 - **Domain** (plain JUnit, no Spring): `UserTest` (permissions, activation, terms), `GroupTest` (id-based equality), `ActivationTokenTest`, `FunctionalityTest`, `CpfValidatorTest`, `UsernameGeneratorTest`.
 - **Validation** (plain JUnit): `CommandValidatorTest`, `ValidationResultTest`.
-- **Use cases** (Mockito + real `CommandValidator`, no database): one test class per write use case (`CreateUserTest`, `UpdateUserTest`, `ActivateUserTest`, `ResetPasswordTest`, `RequestPasswordResetTest`, `ValidateLoginTest`), grouped classes for queries (`UserQueryUseCasesTest`, `GroupCommandUseCasesTest`, `GroupQueryUseCasesTest`), plus `UserSupportTest`. Use-case tests mock `DomainEventPublisher` and capture the published event.
+- **Use cases** (Mockito + real `CommandValidator`, no database): one test class per write use case (`CreateUserTest`, `UpdateUserTest`, `ActivateUserTest`, `ResetPasswordTest`, `RequestPasswordResetTest`), grouped classes for queries (`UserQueryUseCasesTest`, `GroupCommandUseCasesTest`, `GroupQueryUseCasesTest`), plus `UserSupportTest`. Use-case tests mock `DomainEventPublisher` and capture the published event.
 - **Event flow** (`UserNotificationListenerTest`, minimal `@SpringJUnitConfig` context — `AsyncConfig`, the listener, `SpringDomainEventPublisher`, a `DataSourceTransactionManager` over an empty embedded H2, mocked `UserNotifier`): email only after commit and on a virtual thread, none on rollback, fallback without a transaction, notifier failures not propagated.
 - **Persistence** (`@DataJpaTest` + `@ActiveProfiles("test")` + `@AutoConfigureTestDatabase(replace = NONE)`, importing the `*Adapter` beans): `UserPersistenceTest`, `GroupPersistenceTest`, `ActivationTokenPersistenceTest` — round trips, `@EntityGraph` fetches, pagination/sorting, uniqueness checks, Flyway seed verification. Cache annotations are inert in the slice (no CacheManager), so Hazelcast does not start.
-- **Infrastructure/UI utilities**: `JpaSortUtilTest`, `LocalFileStorageTest` (`@TempDir`), `RichTextSanitizerTest` (XSS whitelist).
+- **Infrastructure/UI utilities**: `JpaSortUtilTest`, `LocalFileStorageTest` (`@TempDir`), `RichTextSanitizerTest` (XSS whitelist; escaped markup must stay inert text — no manual entity decoding).
+- **Security**: `UseCaseAuthorizationTest` (`@SpringBootTest` + `@WithMockUser`: anonymous rejected, missing role denied, granted role allowed), `PasswordPolicyTest`, `ActivationTokenTest` (hash only), `ActivationTokenPersistenceTest` (DB stores the hash; `invalidateActiveTokens`), `UserPersistenceTest` (seed admin is in an admin group), `FunctionalityTest` (`Roles` constants ↔ enum), `CreateUserTest` (magic-byte attachment validation).
 - `RhSystemApplicationTests` — full-context smoke test on H2 (`@ActiveProfiles("test")`). The test profile sets `rh-system.cache.enabled: false`: `CacheConfig` is `@ConditionalOnBooleanProperty` on that flag (default `true`), so no Hazelcast node starts and, without `@EnableCaching`, the caching annotations are no-ops. This prevents the test node from trying to join a dev instance running on port 5701. Surefire still carries the Hazelcast `--add-opens` args in its `argLine`.
 
 Conventions for new tests: unit-test new domain/application code without Spring; persistence tests join the existing slice classes (same `@Import` list keeps one shared context); tests must stay independent of the V3 seed data except where they assert it explicitly.

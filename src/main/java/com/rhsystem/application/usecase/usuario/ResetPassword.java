@@ -6,6 +6,7 @@ import com.rhsystem.application.validation.CommandValidator;
 import com.rhsystem.domain.model.usuario.ActivationToken;
 import com.rhsystem.domain.model.usuario.TokenPurpose;
 import com.rhsystem.domain.model.usuario.User;
+import com.rhsystem.domain.service.PasswordPolicy;
 import com.rhsystem.domain.repository.ActivationTokenRepository;
 import com.rhsystem.domain.repository.UserRepository;
 import java.time.LocalDateTime;
@@ -42,6 +43,9 @@ public class ResetPassword {
         }
 
         User user = token.getUser();
+        // Context-aware rules (blocklist, not equal to username/email) — length is
+        // already enforced by Bean Validation on the command.
+        PasswordPolicy.check(cmd.password(), user.getUsername(), user.getEmail()).throwIfInvalid();
         user.resetPassword(passwordEncoder.encode(cmd.password()));
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);

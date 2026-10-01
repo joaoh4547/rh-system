@@ -1,21 +1,17 @@
 import { LitElement, html, css, nothing, type TemplateResult } from 'lit';
 import { customElement, property, state, query } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
-import { Editor, Node, mergeAttributes } from '@tiptap/core';
-import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
-import Link from '@tiptap/extension-link';
-import Table from '@tiptap/extension-table';
-import TableRow from '@tiptap/extension-table-row';
-import TableCell from '@tiptap/extension-table-cell';
-import TableHeader from '@tiptap/extension-table-header';
-import TextAlign from '@tiptap/extension-text-align';
-import Highlight from '@tiptap/extension-highlight';
-import TextStyle from '@tiptap/extension-text-style';
-import { Color } from '@tiptap/extension-color';
-import Placeholder from '@tiptap/extension-placeholder';
-import CharacterCount from '@tiptap/extension-character-count';
-import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+// Tiptap 3 (>= 3.30.4: fixes GHSA-cp6q-959q-f8rh, prototype pollution in mergeAttributes).
+// v3 layout: StarterKit already bundles Link + Underline; tables, text-style and the
+// generic extensions (Placeholder, CharacterCount) are consolidated packages.
+import { Editor, Node } from '@tiptap/core';
+import { StarterKit } from '@tiptap/starter-kit';
+import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
+import { TextAlign } from '@tiptap/extension-text-align';
+import { Highlight } from '@tiptap/extension-highlight';
+import { TextStyle, Color } from '@tiptap/extension-text-style';
+import { Placeholder, CharacterCount } from '@tiptap/extensions';
+import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight';
 import { createLowlight } from 'lowlight';
 import langJs   from 'highlight.js/lib/languages/javascript';
 import langTs   from 'highlight.js/lib/languages/typescript';
@@ -531,7 +527,7 @@ export class RichTextEditorElement extends LitElement {
       // Only update editor when the change came from the server (differs from last editor output)
       if (this.value !== this._editorHtml) {
         this._editorHtml = this.value;
-        ed.commands.setContent(this.value || '', false);
+        ed.commands.setContent(this.value || '', { emitUpdate: false });
       }
     }
     if (changed.has('readonly')) {
@@ -549,9 +545,11 @@ export class RichTextEditorElement extends LitElement {
     this._editor = new Editor({
       element: this._mount,
       extensions: [
-        StarterKit.configure({ heading: { levels: [1, 2, 3] }, codeBlock: false }),
-        Underline,
-        Link.configure({ openOnClick: false, autolink: true }),
+        StarterKit.configure({
+          heading: { levels: [1, 2, 3] },
+          codeBlock: false, // replaced by CodeBlockLowlight
+          link: { openOnClick: false, autolink: true }, // v3: Link + Underline live in StarterKit
+        }),
         Table.configure({ resizable: true }),
         TableRow,
         TableCell,

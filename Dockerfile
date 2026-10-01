@@ -18,7 +18,18 @@ RUN ./mvnw clean package -Pproduction -DskipTests -B
 FROM eclipse-temurin:27-jre
 WORKDIR /app
 
-COPY --from=build /workspace/target/rh-system-*.jar app.jar
+# Usuário sem privilégios: um RCE na aplicação não vira root no container.
+# /app/storage = STORAGE_DIR do .env.example (o volume nomeado herda o dono na 1ª criação).
+RUN groupadd --system rhsystem \
+    && useradd --system --gid rhsystem --no-create-home --shell /usr/sbin/nologin rhsystem \
+    && mkdir -p /app/storage \
+    && chown -R rhsystem:rhsystem /app
+
+COPY --from=build --chown=rhsystem:rhsystem /workspace/target/rh-system-*.jar app.jar
+
+# Profile de produção: sem defaults de credenciais, logs em INFO, cookie Secure,
+# DefaultAdminCredentialsGuard ativo.
+ENV SPRING_PROFILES_ACTIVE=prod
 
 # Flags recomendadas pelo Hazelcast para JVMs modernas (evita warnings e
 # habilita otimizações internas de serialização) + mutação de campos final
@@ -34,5 +45,7 @@ ENV JAVA_TOOL_OPTIONS="--add-modules java.se \
 
 # 8080 = HTTP; 5701 = cluster Hazelcast
 EXPOSE 8080 5701
+
+USER rhsystem
 
 ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -1,191 +1,174 @@
 # Revisão de Segurança — RH System
 
-Data: 2026-07-09. Escopo: código-fonte principal (`src/main/java`), configurações e migrations.
+Primeira auditoria: 2026-07-09. **Reauditoria e correções: 2026-10-01** (Spring Boot 4.1.1, Java 27, Vaadin 25.3.0).
+Escopo: código-fonte (`src/main`), configuração, migrations, Docker/nginx e dependências (Maven + npm).
+
+Legenda: ✅ corrigido · 🟡 parcial · ⏳ pendente · ➖ risco aceito/não aplicável
 
 ---
 
-## 🔴 Severidade Alta
+## Resumo
 
-### 1. Autorização não implementada (controle de acesso quebrado)
-
-**Onde:** `AppAccessManager.java`, todas as páginas em `interfaces/ui/pages`
-
-`AppAccessManager.loadFunctionalities()` retorna lista vazia (TODO pendente), então `hasAccess()` sempre retorna `false` — o controle por funcionalidade não existe. Pior: todas as páginas (`UserPage`, `GroupPage`, `ParameterPage`) usam apenas `@PermitAll`, ou seja, **qualquer usuário autenticado acessa qualquer tela via URL direta**, incluindo gestão de usuários e grupos.
-
-Há também um bug lógico: `hasAccessAny()` usa `containsAll` (semântica de "todos") em vez de "qualquer um".
-
-**Como resolver:**
-- Implementar `loadFunctionalities()` retornando as funcionalidades reais do usuário (via grupos).
-- Corrigir `hasAccessAny`: `Arrays.stream(functionalities).anyMatch(loadFunctionalities()::contains)`.
-- Trocar `@PermitAll` por `@RolesAllowed("ROLE_X")` nas páginas administrativas (as authorities já são geradas em `AppUserDetailsService.makeAuthorities`).
-- Como defesa em profundidade, validar acesso também nos use cases (camada de aplicação), não só na UI.
-
-### 2. Usuário admin seed com senha conhecida
-
-**Onde:** `V3__seed_admin_user.sql`
-
-A migration cria `admin.teste` com senha `admin123` documentada em comentário e hash BCrypt versionado. Se rodar em produção, é acesso administrativo trivial.
-
-**Como resolver:**
-- Remover o seed das migrations Flyway e criar o admin via processo de bootstrap (ex.: `ApplicationRunner` que só cria o usuário se a tabela estiver vazia, com senha vinda de variável de ambiente, status pendente de ativação, ou fluxo de ativação por email).
-- Se mantiver para dev, condicionar a um profile (`spring.flyway.locations` diferente por profile) e nunca incluir no path de produção.
-
-### 3. Senha reinjetada no DOM pelo servidor
-
-**Onde:** `LoginView.authenticate()`
-
-Após validar as credenciais no servidor, a senha em texto plano é enviada **de volta ao navegador** via `executeJs` e inserida num `<input>` criado dinamicamente para fazer o POST nativo. A senha trafega servidor→cliente pelo canal UIDL do Vaadin, fica em memória/DOM do navegador e pode vazar por extensões, XSS ou ferramentas de replay de sessão.
-
-**Como resolver:**
-- Usar o fluxo padrão: `LoginForm.setAction("login")` faz o POST nativo direto do formulário, sem round-trip da senha pelo servidor.
-- Para o fluxo de termos: autenticar primeiro (POST nativo) e exibir o dialog de termos **após** o login, bloqueando a navegação (`BeforeEnterObserver` no `MainLayout`) enquanto os termos não forem aceitos. Isso também elimina o `ValidateLogin` duplicado.
-
-### 4. Ausência de proteção contra força bruta e rate limiting
-
-**Onde:** `ValidateLogin`, `RequestPasswordReset`, `ActivateUser`, `ResetPassword`
-
-Não há lockout de conta, atraso progressivo, CAPTCHA nem limite de tentativas em nenhum fluxo:
-- Login: tentativas ilimitadas de senha (e `ValidateLogin` roda antes do Spring Security, duplicando a superfície).
-- Forgot password: chamadas ilimitadas → flooding de emails (email bombing) e acúmulo de tokens válidos.
-- Ativação/reset: brute force ilimitado contra tokens.
-
-**Como resolver:**
-- Implementar rate limiting por IP + por conta (ex.: Bucket4j com o cache Hazelcast já existente no projeto).
-- Bloquear a conta temporariamente após N falhas (registrar tentativas na tabela de usuário ou no cache).
-- Limitar solicitações de reset por email (ex.: 3/hora) e invalidar tokens anteriores ao gerar um novo.
+| # | Item | Severidade | Status |
+|---|---|---|---|
+| D1 | Tomcat 11.0.24 com CVEs críticas | 🔴 Alta | ✅ 11.0.26 |
+| D2 | jackson-databind 3.1.5 / 2.21.5 com CVEs | 🟠 Média | ✅ 3.1.7 / 2.21.7 |
+| D3 | Tiptap 2.x — prototype pollution sem correção no 2.x | 🟠 Média | ✅ Tiptap 3.31.4 |
+| D4 | Pacotes npm gerenciados pelo Vaadin (dompurify, react-router, vite…) | 🟡 Baixa/Média | ⏳ reauditar após o build com Vaadin 25.3.0 |
+| 1 | Autorização não implementada (qualquer logado acessava tudo) | 🔴 Alta | ✅ |
+| 2 | Usuário seed `admin.teste`/`admin123` | 🔴 Alta | ✅ (bloqueado fora de dev) |
+| 3 | Senha reinjetada no DOM no login | 🔴 Alta | ✅ |
+| 4 | Sem proteção contra força bruta / rate limiting | 🔴 Alta | ⏳ |
+| 5 | Tokens em texto plano / não invalidados | 🟠 Média | 🟡 (falta derrubar sessões após reset) |
+| 6 | Política de senha fraca (mín. 6) | 🟠 Média | ✅ |
+| 7 | Enumeração de usuários | 🟠 Média | ✅ |
+| 8 | Upload sem limite nem validação de tipo | 🟠 Média | ✅ |
+| 9 | Cluster Hazelcast sem autenticação | 🟠 Média | ➖ mitigado por rede (ver abaixo) |
+| 10 | Credenciais padrão do banco | 🟠 Média | ✅ |
+| 11 | Pré-decodificação de entidades no sanitizador | 🟡 Baixa | ✅ |
+| 12 | `spring-boot-devtools` não-optional | 🟡 Baixa | ✅ |
+| 13 | Logging DEBUG / `format_sql` em todos os ambientes | 🟡 Baixa | ✅ |
+| 14 | Ordenação por campo arbitrário | 🟡 Baixa | ➖ |
+| 15 | Cookie de sessão sem flags | 🟡 Baixa | ✅ |
+| N1 | Container rodando como root | 🟡 Baixa | ✅ |
+| N2 | Sem `Referrer-Policy` / `Permissions-Policy`; nginx expondo versão | 🟡 Baixa | ✅ |
+| N3 | Sem Content-Security-Policy | 🟡 Baixa | ⏳ |
+| N4 | `AES_KEY` ausente do `.env.example` (app não sobe na stack Docker) | 🟡 Baixa | ✅ documentado |
 
 ---
 
-## 🟠 Severidade Média
+## Dependências (CVEs)
 
-### 5. Tokens de ativação/reset em texto plano no banco
+Levantamento feito contra o GitHub Advisory Database (versões efetivas do BOM do Boot 4.1.1 + overrides do `pom.xml`) e `npm audit` do `package-lock.json`.
 
-**Onde:** `ActivationToken.java`, `RequestPasswordReset.java`
+### D1 — Apache Tomcat 11.0.24 ✅
 
-O token (UUID v4 — geração ok, usa CSPRNG) é armazenado em claro. Quem obtiver leitura do banco (SQL injection futura, backup vazado, insider) consegue tomar contas via reset. Além disso, tokens antigos não são invalidados quando um novo é emitido, e sessões ativas não são derrubadas após reset de senha.
+- **CVE-2026-65182** (crítica) — bypass de *security constraint* quando uma constraint de caminho mais longo vem antes de uma mais restritiva.
+- **CVE-2026-68525** (crítica) — redirect após FORM auth pode furar constraint por método.
+- **CVE-2026-65905** (crítica) — replay limitado no DIGEST.
+- Corrigidas na 11.0.25. Na **11.0.26** (15/09/2026) vêm ainda correções de WebSocket — relevantes porque o **Vaadin Push usa WebSocket**: CVE-2026-76183 (bypass de constraints em endpoints WebSocket), CVE-2026-77791 (DoS no close), CVE-2026-79677, CVE-2026-86350 (mistura de headers).
+- Exposição real: baixa para as três primeiras (a app não usa constraints/FORM/DIGEST do Tomcat — quem autentica é o Spring Security), mas atualização de patch é barata.
+- **Correção:** `<tomcat.version>11.0.26</tomcat.version>` no `pom.xml`.
 
-**Como resolver:**
-- Armazenar apenas o hash do token (SHA-256) e comparar o hash no lookup.
-- Ao emitir novo token, invalidar os anteriores do mesmo usuário/propósito (`UPDATE ... SET used = true`).
-- Após reset de senha, invalidar todas as sessões do usuário (`SessionRegistry` do Spring Security).
-- Reduzir a validade do token de reset (24h é longo; 30–60 min é o usual para reset).
+### D2 — jackson-databind ✅
 
-### 6. Política de senha fraca
+- CVE-2026-91777 e CVE-2026-91776 (altas, DoS — publicadas em 30/09/2026), CVE-2026-68497 (DoS), CVE-2026-83557 e CVE-2026-19032 (médias).
+- Exploráveis só com `@JsonIdentityInfo`/`@JsonTypeInfo(defaultImpl)`/tipos `Path` sobre JSON hostil — a app não expõe API JSON pública, mas o Vaadin usa Jackson internamente.
+- **Correção:** `jackson-bom.version` 3.1.7 e `jackson-2-bom.version` 2.21.7.
 
-**Onde:** `ActivationCommand.java`
+### D3 — Tiptap 2.27 (GHSA-cp6q-959q-f8rh) ✅
 
-Mínimo de 6 caracteres, sem qualquer outro requisito. Permite `123456`.
+- `mergeAttributes()` trata `__proto__` como chave comum → atributos herdados viram atributos de DOM executáveis (ex.: `onerror`). **Não há correção na linha 2.x**.
+- Exposição real era baixa (o HTML vem do servidor já sanitizado e o nó customizado usa atributos fixos), mas o pacote ficava eternamente vulnerável.
+- **Correção:** migração para **Tiptap 3.31.4** (`@NpmPackage` em `RichTextEditor` + imports/API em `rich-text-editor.ts`, verificados com `tsc` contra os tipos do v3). `npm audit` da árvore do Tiptap 3: 0 vulnerabilidades.
 
-**Como resolver:**
-- Mínimo 8–12 caracteres (NIST 800-63B recomenda ≥8 com verificação contra listas de senhas vazadas).
-- Criar um validador (`@ValidPassword`) que rejeite senhas comuns (ex.: integração com API Have I Been Pwned k-anonymity, ou lista local top-10k).
-- Rejeitar senha igual ao username/email.
+### D4 — Pacotes npm do Vaadin ⏳
 
-### 7. Enumeração de usuários
+`npm audit` do lock atual (gerado com Vaadin 25.2) aponta, além do Tiptap: `dompurify` ≤3.4.12 (via `@vaadin/markdown`), `react-router` 7.12–7.18.1 (CSRF só no modo RSC — não usado), e ferramentas de build (`vite`→`postcss`, `nanoid`, `browserslist`) — estas só rodam no build, não chegam ao navegador.
+**Ação:** o Vaadin regenera `package.json`/lock no próximo build com a 25.3.0; rode `npm audit --omit=dev` depois e reavalie. Não fixe versões de pacotes do Vaadin manualmente.
 
-**Onde:** `AppUserDetailsService`, `ValidateLogin`
+### Sem CVEs conhecidas (2026-10-01)
 
-- `UsernameNotFoundException("Usuário não encontrado: " + username)` — se a mensagem chegar a logs/UI, revela existência de contas.
-- Em `ValidateLogin`, o `passwordEncoder.matches()` só executa quando o usuário existe → diferença de tempo mensurável (timing oracle) permite enumerar usernames.
-
-**Como resolver:**
-- Mensagem genérica ("Credenciais inválidas") sem incluir o username.
-- Quando o usuário não existir, executar um `matches()` contra um hash dummy para equalizar o tempo de resposta.
-
-### 8. Upload sem limite de tamanho nem validação de tipo
-
-**Onde:** `UserForm.configureUpload()` (`UploadHandler.inMemory`), `LocalFileStorage.java`
-
-- `UploadHandler.inMemory` carrega o arquivo inteiro em memória sem `setMaxFileSize` → DoS por exaustão de memória.
-- Nenhuma validação de extensão ou content-type: aceita `.exe`, `.html`, `.svg` etc. Se esses arquivos forem servidos de volta um dia, `.html`/`.svg` viram XSS armazenado.
-- Sem limite de quantidade de arquivos por usuário.
-
-**Como resolver:**
-- `upload.setMaxFileSize(...)` (ex.: 5 MB) e `upload.setMaxFiles(...)`.
-- Allowlist de extensões e MIME types (PDF, JPG, PNG) validada **no servidor** (`CreateUser`), incluindo verificação de magic bytes — não confiar no MIME enviado pelo cliente.
-- Ao servir os arquivos, usar `Content-Disposition: attachment` e `X-Content-Type-Options: nosniff`.
-
-### 9. Cluster Hazelcast sem autenticação
-
-**Onde:** `application.yml` (`rh-system.cache`), `pom.xml`
-
-Descoberta por multicast por padrão e sem credenciais/TLS: qualquer processo na mesma rede pode ingressar no cluster e ler/alterar o cache (que pode conter dados de usuários e grupos).
-
-**Como resolver:**
-- Em produção, usar descoberta TCP-IP com lista explícita de membros (`HZ_MEMBERS`), desabilitar multicast.
-- Habilitar autenticação entre membros e TLS (Hazelcast Enterprise) ou restringir a porta 5701 por firewall/rede isolada.
-- Não armazenar dados sensíveis (senhas, tokens) no cache.
-
-### 10. Credenciais default nas configurações
-
-**Onde:** `application.yml`
-
-`${DB_USER:postgres}` / `${DB_PASSWORD:postgres}` — se as variáveis não forem setadas em produção, a aplicação sobe silenciosamente com credenciais triviais.
-
-**Como resolver:**
-- Remover os defaults de credenciais (deixar `${DB_PASSWORD}` sem fallback → falha na inicialização se ausente, fail-fast).
-- Manter defaults apenas num `application-dev.yml` de profile de desenvolvimento.
+Spring Framework 7.0.9, Spring Security 7.1.1, Hibernate 7.4.5, Hibernate Validator 9.1.3, HikariCP 7.0.2, Logback 1.5.38, PostgreSQL JDBC 42.7.13, H2 2.4.240, Flyway 12.4.0, Hazelcast 5.7.0, Guava 33.7.1, commons-lang3 3.20.0, commons-collections4 4.5.0, OWASP HTML Sanitizer 20260313.1, Lombok 1.18.48, Netty 4.2.17, Angus Mail 2.0.5, Vaadin Flow 25.3.0 (jsoup 1.23.2 — já com a correção da CVE-2026-71497).
 
 ---
 
-## 🟡 Severidade Baixa
+## Código e configuração
 
-### 11. Pré-decodificação manual de entidades no sanitizador
+### 1. Autorização (controle de acesso quebrado) ✅
 
-**Onde:** `RichTextSanitizer.sanitize()`
+**Era:** todas as páginas `@PermitAll`, `AppAccessManager` retornava lista vazia, `hasAccessAny` com semântica de "todos". Qualquer logado abria usuários, grupos, parâmetros e cache (inclusive limpar cache e ver prévias dos valores cacheados).
 
-Decodificar `&lt;`, `&gt;` etc. manualmente **antes** do OWASP sanitizer transforma texto que o usuário digitou literalmente em markup ativo, e a cadeia de `replace` não cobre todas as formas de encoding (ex.: `&#x3C;`, `&#60;`). O `replace("&gt;", ">")` pós-sanitização também desfaz encoding intencional. O sanitizer OWASP já lida com entidades corretamente.
+**Agora:**
+- Telas com `@RolesAllowed`: `UserPage` (`VIEW_USER`), `GroupPage` (`VIEW_GROUP`), `ParameterPage` (`MANAGE_PARAMETERS`), `CachePage` (`MANAGE_CACHE`). Novas funcionalidades `MANAGE_PARAMETERS` e `MANAGE_CACHE` (categoria `SYSTEM`).
+- **Defesa em profundidade:** todos os casos de uso dessas telas com `@PreAuthorize` (`@EnableMethodSecurity`). JSR-250 propositalmente desligado no method security (faria proxy AOP das views do Vaadin).
+- `AppAccessManager` lê as authorities da sessão (`AuthenticationContext.hasRole/hasAnyRole/hasAllRoles`) — mesma fonte das anotações. Menu e ações (novo/editar/excluir/ativar) só aparecem com permissão.
+- Migration `V20261001013000` garante um grupo admin e vincula o `admin.teste`, para ninguém ficar trancado fora.
+- Testes: `UseCaseAuthorizationTest`, `FunctionalityTest`, `UserPersistenceTest`.
 
-**Como resolver:** remover o pré-decode e o pós-replace; chamar `POLICY.sanitize(html)` diretamente. Se houver problema de dupla renderização, tratar na origem (Tiptap), não no sanitizador.
+**Observação:** permissões mudam no próximo login (authorities são montadas na autenticação).
 
-### 12. `spring-boot-devtools` sem marcação optional
+### 2. Usuário seed com senha conhecida ✅
 
-**Onde:** `pom.xml`
+A migration V3 não pode ser alterada (checksum do Flyway). **Fora dos profiles `dev`/`test`**, o `DefaultAdminCredentialsGuard` verifica na subida se o `admin.teste` ainda tem a senha `admin123`: com `ADMIN_INITIAL_PASSWORD` (válida pela `PasswordPolicy`) troca a senha; sem ela, **bloqueia** o usuário. A imagem Docker roda com `SPRING_PROFILES_ACTIVE=prod`.
 
-Com `scope=runtime` (sem `<optional>true</optional>`), o devtools pode acabar no jar final. Ele é auto-desabilitado em jars empacotados, mas se `spring.devtools.remote.secret` for definido, habilita endpoint de execução remota de código.
+### 3. Senha reinjetada no DOM ✅
 
-**Como resolver:** adicionar `<optional>true</optional>` e garantir a exclusão no `spring-boot-maven-plugin` para builds de produção.
+`LoginForm.setAction("login")`: POST nativo direto ao Spring Security — a senha não passa pelo canal UIDL nem volta ao navegador. O aceite de termos foi para **depois** do login (`TermsAcceptanceGuard` + `TermsView`), o que eliminou o `ValidateLogin` (superfície duplicada de verificação de senha).
 
-### 13. Logging DEBUG + `format_sql` em configuração única
+### 4. Força bruta / rate limiting ⏳
 
-**Onde:** `application.yml`
+Continua aberto — é o item mais importante que falta.
+**Recomendação:** lockout temporário por conta após N falhas (listener de `AuthenticationFailureBadCredentialsEvent` + contador no Hazelcast, que já é compartilhado entre instâncias) e limite por IP/email no "esqueci minha senha" (ex.: Bucket4j sobre Hazelcast). Os tokens de reset já ficaram mais difíceis de abusar (item 5).
 
-`com.rhsystem: DEBUG` e `format_sql: true` valem para todos os ambientes — SQL e dados de negócio podem vazar em logs de produção (CPF, RG, emails — dados pessoais sob LGPD).
+### 5. Tokens de ativação/reset 🟡
 
-**Como resolver:** mover para `application-dev.yml`; em produção usar `INFO` e nunca logar parâmetros SQL. Revisar se nenhum log imprime entidade `User` inteira.
+- ✅ O banco guarda **só o SHA-256** do token (`ActivationToken.tokenHash`); o valor puro existe apenas em memória para montar o email. Migration Java `V20261001013100` converteu os tokens existentes (links já enviados continuam valendo).
+- ✅ Ao pedir um novo reset, os tokens anteriores do usuário são invalidados (só o link mais recente funciona).
+- ✅ Validade do reset: **30 min** (`PASSWORD_RESET_TOKEN_MINUTES`).
+- ✅ Corrigido de quebra: `@OneToOne` → `@ManyToOne` (um usuário tem vários tokens ao longo do tempo).
+- ⏳ Derrubar as sessões ativas do usuário após o reset de senha (exige `SessionRegistry`/Spring Session).
 
-### 14. Ordenação por campo arbitrário
+### 6. Política de senha ✅
 
-**Onde:** `JpaSortUtil.java`
+8 a 72 caracteres (72 = limite do BCrypt), blocklist local de senhas comuns e proibição de senha igual ao usuário/email (`PasswordPolicy`, alinhado ao NIST SP 800-63B). Senha rejeitada não consome o token.
 
-Nomes de campo vindos da UI vão direto para `Sort.by`. Não é SQL injection (Spring Data valida contra o metamodelo), mas permite ordenar por campos sensíveis (ex.: `password`), possibilitando inferência de dados por observação da ordem.
+### 7. Enumeração de usuários ✅
 
-**Como resolver:** validar o campo contra uma allowlist por entidade antes de montar o `Sort`.
+`UsernameNotFoundException` sem o username na mensagem; o `DaoAuthenticationProvider` do Spring já esconde a exceção e roda um BCrypt *dummy* para igualar o tempo. O `ValidateLogin` (que tinha *timing oracle*) foi removido.
+➖ Contas desativadas/bloqueadas são checadas antes da senha (padrão do Spring) — a resposta é a mesma (`/login?error`), sobra só diferença de tempo; aceito.
 
-### 15. Cookies de sessão sem flags explícitas
+### 8. Upload ✅
 
-**Onde:** `application.yml`
+`AttachmentPolicy`: só PDF/PNG/JPEG **detectados por magic bytes** (extensão e MIME do cliente não são confiáveis), 5 MB por arquivo, 10 por usuário — validado no `CreateUser` (servidor); o tipo gravado é o detectado. No `Upload`: `setMaxFileSize`, `setMaxFiles`, `setAcceptedFileTypes` (só UX). nginx: `client_max_body_size 10m`.
 
-**Como resolver:** em produção (HTTPS), definir:
+### 9. Hazelcast sem autenticação ➖
 
-```yaml
-server:
-  servlet:
-    session:
-      cookie:
-        secure: true
-        http-only: true
-        same-site: lax
-```
+A edição Community não tem autenticação/TLS entre membros. Mitigação atual: o `docker-compose.yml` não publica a porta 5701 no host (só rede interna do compose) e usa descoberta TCP-IP explícita (`HZ_MEMBERS`).
+**Em produção:** rede isolada/firewall na 5701, nunca multicast, e não colocar segredos no cache.
+
+### 10. Credenciais padrão ✅
+
+`application.yml` base sem default para `DB_USER`/`DB_PASSWORD` (*fail-fast*). Os defaults de desenvolvimento ficaram no `application-dev.yml` (profile ativado automaticamente quando nenhum é informado).
+
+### 11. Sanitizador ✅
+
+Removidos o pré-decode manual de entidades e o `replace("&gt;", ">")` pós-sanitização: o HTML vai direto à política OWASP. Texto escapado continua texto (exibido, nunca executado). Testes cobrem `&lt;script&gt;` e entidades numéricas.
+
+### 12. Devtools ✅ — `<optional>true</optional>`.
+
+### 13. Logging ✅ — base em `INFO` sem `format_sql`; `DEBUG` só no profile `dev`.
+
+### 14. Ordenação por campo arbitrário ➖
+
+No Vaadin o cliente envia a **coluna**, e o servidor mapeia coluna → propriedade; não dá para o navegador injetar `password` como campo de ordenação. Risco aceito; revisar se um dia houver API REST.
+
+### 15. Cookie de sessão ✅
+
+`HttpOnly`, `SameSite=Lax` e `Secure` por padrão (`SESSION_COOKIE_SECURE`, `false` só no profile `dev` e para testar a stack Docker em http). `server.forward-headers-strategy: native` para respeitar o `X-Forwarded-Proto` do nginx.
+
+### N1. Container como root ✅ — runtime com usuário `rhsystem` (sem shell), `/app` com dono correto.
+
+### N2. Headers ✅ — `Referrer-Policy: strict-origin-when-cross-origin` e `Permissions-Policy` restritivo no Spring Security; `server_tokens off` no nginx. (O Spring já envia `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Cache-Control` e HSTS em HTTPS.)
+
+### N3. Content-Security-Policy ⏳
+
+O Vaadin exige `'unsafe-inline'`/`'unsafe-eval'` em vários cenários (bootstrap, Push), então uma CSP útil precisa ser montada e testada com a aplicação rodando. Começar em `Content-Security-Policy-Report-Only`.
+
+### N4. `AES_KEY` ✅ documentado
+
+O `AesCryptographer` exige a chave na subida e ela não constava no `.env.example` — adicionada com instrução de geração (`openssl rand -base64 32`). O profile `test` tem uma chave própria, gerada só para os testes.
 
 ---
 
-## ✅ Pontos positivos observados
+## ✅ Pontos positivos
 
-BCrypt para senhas; AES-GCM com IV aleatório e validação de tamanho de chave (`AesCryptographer`); tokens single-use com expiração; `RequestPasswordReset` não revela existência do email; sanitização por allowlist OWASP no rich text; `ddl-auto: validate` + Flyway; segredos via variáveis de ambiente; `open-in-view: false`; timeout de sessão curto com `closeIdleSessions`.
+BCrypt; AES-GCM com IV aleatório; tokens single-use com expiração (agora com hash); `RequestPasswordReset` não revela se o email existe; sanitização OWASP por allowlist; `ddl-auto: validate` + Flyway; segredos por variável de ambiente; `open-in-view: false`; timeout de sessão com `closeIdleSessions`; emails disparados só após o commit (eventos de domínio), com tokens fora dos logs.
 
-## Prioridade sugerida
+## Próximos passos (ordem sugerida)
 
-1. Itens 1–4 (alta) antes de qualquer deploy.
-2. Itens 5–10 na sequência.
-3. Itens 11–15 como melhoria contínua.
+1. **Item 4** — lockout + rate limiting (login e esqueci a senha).
+2. **D4** — `npm audit --omit=dev` após o build com Vaadin 25.3.0.
+3. **Item 5** — invalidar sessões após reset de senha.
+4. **N3** — CSP em modo report-only.
+5. Remover os overrides de Tomcat/Jackson do `pom.xml` quando o Boot 4.1.2+ trouxer versões iguais ou maiores.

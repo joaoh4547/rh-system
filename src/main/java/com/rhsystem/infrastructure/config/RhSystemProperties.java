@@ -23,6 +23,9 @@ public class RhSystemProperties {
     /** Activation token validity in hours. */
     private long activationTokenValidityHours = 24;
 
+    /** Password-reset token validity in minutes (short on purpose: reset links are sensitive). */
+    private long passwordResetTokenValidityMinutes = 30;
+
     /** Storage directory for attachments. */
     private String storageDir = "./storage/documentos";
 

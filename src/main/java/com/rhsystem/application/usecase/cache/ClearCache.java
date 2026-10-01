@@ -1,9 +1,12 @@
 package com.rhsystem.application.usecase.cache;
 
+import com.rhsystem.domain.model.Functionality.Roles;
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.rhsystem.application.port.CacheManagementPort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@PreAuthorize("hasRole('" + Roles.MANAGE_CACHE + "')")
 @Service
 @Transactional
 public class ClearCache {

@@ -22,16 +22,16 @@ public class RequestPasswordReset {
     private final UserRepository userRepository;
     private final ActivationTokenRepository tokenRepository;
     private final DomainEventPublisher events;
-    private final long tokenValidityHours;
+    private final long tokenValidityMinutes;
 
     public RequestPasswordReset(UserRepository userRepository,
                                 ActivationTokenRepository tokenRepository,
                                 DomainEventPublisher events,
-                                @Value("${rh-system.ativacao-token-validade-horas:24}") long tokenValidityHours) {
+                                @Value("${rh-system.password-reset-token-validity-minutes:30}") long tokenValidityMinutes) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.events = events;
-        this.tokenValidityHours = tokenValidityHours;
+        this.tokenValidityMinutes = tokenValidityMinutes;
     }
 
     @Transactional
@@ -40,10 +40,12 @@ public class RequestPasswordReset {
             return;
         }
         userRepository.findByEmail(email.trim()).ifPresent(user -> {
+            // Only the newest link works: earlier, still-valid reset tokens are burned.
+            tokenRepository.invalidateActiveTokens(user, TokenPurpose.PASSWORD_RESET);
             ActivationToken token = new ActivationToken(user,
-                    LocalDateTime.now().plusHours(tokenValidityHours), TokenPurpose.PASSWORD_RESET);
+                    LocalDateTime.now().plusMinutes(tokenValidityMinutes), TokenPurpose.PASSWORD_RESET);
             tokenRepository.save(token);
-            events.publish(PasswordResetRequested.of(user, token.getToken()));
+            events.publish(PasswordResetRequested.of(user, token.getRawToken()));
         });
     }
 }

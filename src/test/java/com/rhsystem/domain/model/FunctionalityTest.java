@@ -39,4 +39,17 @@ class FunctionalityTest {
         int total = byCategory.values().stream().mapToInt(Collection::size).sum();
         assertEquals(Functionality.values().length, total);
     }
+
+    @Test
+    void rolesConstantsMatchEnumNamesOneToOne() throws IllegalAccessException {
+        java.util.Set<String> constants = new java.util.HashSet<>();
+        for (java.lang.reflect.Field field : Functionality.Roles.class.getFields()) {
+            String value = (String) field.get(null);
+            assertEquals(field.getName(), value, "constant name and value must match");
+            assertNotNull(Functionality.valueOf(value)); // throws if there is no such functionality
+            constants.add(value);
+        }
+        assertEquals(Functionality.values().length, constants.size(),
+                "every functionality needs a constant in Functionality.Roles");
+    }
 }
