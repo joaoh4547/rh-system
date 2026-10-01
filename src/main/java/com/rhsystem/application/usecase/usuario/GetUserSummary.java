@@ -1,5 +1,7 @@
 package com.rhsystem.application.usecase.usuario;
 
+import com.rhsystem.domain.model.Functionality.Roles;
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.rhsystem.application.dto.usuario.UserSummary;
 import com.rhsystem.domain.model.usuario.UserStatus;
 import com.rhsystem.domain.repository.UserRepository;
@@ -12,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Does not load records into memory — executes only status counts,
  * making it suitable for displaying KPIs on paginated dashboards.
  */
+@PreAuthorize("hasRole('" + Roles.VIEW_USER + "')")
 @Service
 public class GetUserSummary {
 

@@ -1,5 +1,7 @@
 package com.rhsystem.application.usecase.usuario;
 
+import com.rhsystem.domain.model.Functionality.Roles;
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.rhsystem.application.exception.BusinessException;
 import com.rhsystem.domain.model.usuario.User;
 import com.rhsystem.domain.repository.UserRepository;
@@ -12,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
  * edit form can read the memberships after the session is closed (avoids
  * {@code LazyInitializationException} on detached grid entities).
  */
+@PreAuthorize("hasRole('" + Roles.VIEW_USER + "')")
 @AllArgsConstructor
 @Service
 public class GetUser {

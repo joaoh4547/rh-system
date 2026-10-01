@@ -1,6 +1,9 @@
 package com.rhsystem.interfaces.ui.pages.usuario;
 
-import com.rhsystem.application.usecase.group.ListGroups;
+import com.rhsystem.application.port.AccessManager;
+import com.rhsystem.domain.model.Functionality;
+import com.rhsystem.domain.model.Functionality.Roles;
+import jakarta.annotation.security.RolesAllowed;
 import com.rhsystem.application.usecase.usuario.*;
 import com.rhsystem.domain.model.Sorting;
 import com.rhsystem.domain.model.usuario.User;
@@ -19,10 +22,10 @@ import com.vaadin.flow.data.provider.SortDirection;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.Nullable;
-import jakarta.annotation.security.PermitAll;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.stream.Stream;
 
 /**
@@ -34,32 +37,16 @@ import java.util.stream.Stream;
  */
 @Route(value = "usuarios", layout = MainLayout.class)
 @PageTitle("Users - RH System")
-@PermitAll
+@RolesAllowed(Roles.VIEW_USER)
+@RequiredArgsConstructor
 public class UserPage extends BasePage<User> {
 
     private final ListUsers listUsers;
-    private final CreateUser createUser;
-    private final UpdateUser updateUser;
     private final RemoveUser removeUser;
     private final GetUserSummary getUserSummary;
     private final GetUser getUser;
-    private final ListGroups listGroups;
-
-    public UserPage(ListUsers listUsers,
-                    CreateUser createUser,
-                    UpdateUser updateUser,
-                    RemoveUser removeUser,
-                    GetUserSummary getUserSummary,
-                    GetUser getUser,
-                    ListGroups listGroups) {
-        this.listUsers = listUsers;
-        this.createUser = createUser;
-        this.updateUser = updateUser;
-        this.removeUser = removeUser;
-        this.getUserSummary = getUserSummary;
-        this.getUser = getUser;
-        this.listGroups = listGroups;
-    }
+    private final ObjectProvider<UserFormDialog> userFormDialog;
+    private final AccessManager accessManager;
 
     @Override
     protected String pageTitle() {
@@ -116,7 +103,24 @@ public class UserPage extends BasePage<User> {
         // Reload with the groups collection fetched: the grid row is a detached
         // entity, reading its lazy groups here would throw LazyInitializationException.
         User editing = user == null ? null : getUser.execute(user.getId());
-        return new UserFormDialog(createUser, updateUser, editing, listGroups.executeActive(), this::refresh);
+        return userFormDialog.getObject().edit(editing, this::refresh);
+    }
+
+    // ── Permissions (the use cases enforce them too, via @PreAuthorize) ──
+
+    @Override
+    protected boolean insertVisible() {
+        return accessManager.hasAccess(Functionality.CREATE_USER);
+    }
+
+    @Override
+    public boolean canEdit(User user) {
+        return accessManager.hasAccess(Functionality.CREATE_USER);
+    }
+
+    @Override
+    public boolean canDelete(User user) {
+        return accessManager.hasAccess(Functionality.DELETE_USER);
     }
 
     @Override

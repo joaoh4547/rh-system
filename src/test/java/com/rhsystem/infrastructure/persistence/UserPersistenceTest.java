@@ -75,6 +75,15 @@ class UserPersistenceTest {
         assertEquals("Admin Teste", admin.get().getFullName());
     }
 
+    @Test
+    void seedAdminBelongsToAnAdminGroupAndGetsEveryFunctionality() {
+        User admin = userRepository.findByUsername("admin.teste").orElseThrow();
+
+        assertTrue(admin.isAdmin(), "migration V20261001013000 must link admin.teste to an admin group");
+        assertEquals(java.util.Set.of(com.rhsystem.domain.model.Functionality.values()),
+                admin.getUserFunctionalities());
+    }
+
     // ── Round trips ───────────────────────────────────────────────────────────
 
     @Test
@@ -114,7 +123,7 @@ class UserPersistenceTest {
     @Test
     void findByIdWithGroupsFetchesMemberships() {
         Group group = groupRepository.save(Group.builder()
-                .name("RH").active(true).admin(false)
+                .name("RH").enable(true).admin(false)
                 .functionalities(new ArrayList<>())
                 .build());
         User user = newUser("Elisa", FREE_CPFS[0]);

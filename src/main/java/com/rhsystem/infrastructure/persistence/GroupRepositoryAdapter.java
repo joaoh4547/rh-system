@@ -29,7 +29,7 @@ public class GroupRepositoryAdapter implements GroupRepository {
 
     @Override
     @Cacheable(cacheNames = CacheConfig.GROUPS,
-            key = "'page:' + #limit + ':' + #offset + ':' + #sorting")
+            key = "'page:' + #limit + ':' + #offset + ':' + #sorting.toString()")
     public Collection<Group> findAllPaginated(int limit, int offset, Collection<Sorting> sorting) {
         int page = limit > 0 ? offset / limit : 0;
         var pageable = JpaSortUtil.createSort(sorting, Sort.by("name"));

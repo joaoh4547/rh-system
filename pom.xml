@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.0</version>
+        <version>4.1.1</version>
         <relativePath/>
     </parent>
 
@@ -19,10 +19,23 @@
     <packaging>jar</packaging>
 
     <properties>
-        <java.version>26</java.version>
-        <maven.compiler.release>26</maven.compiler.release>
+        <java.version>27</java.version>
+        <maven.compiler.release>27</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <vaadin.version>25.2.1</vaadin.version>
+        <vaadin.version>25.3.0</vaadin.version>
+        <!-- Overrides do BOM do Spring Boot 4.1.1 -->
+        <!-- Lombok 1.18.48 é a primeira versão com suporte ao JDK 27 (o BOM traz 1.18.46) -->
+        <lombok.version>1.18.48</lombok.version>
+        <!-- O BOM gerencia hazelcast + hazelcast-spring em 5.5.0; a property alinha os dois em 5.7.0
+             (antes só o hazelcast-spring estava em 5.7.0 e o core ficava em 5.5.0 — versões misturadas) -->
+        <hazelcast.version>5.7.0</hazelcast.version>
+        <!-- Segurança (CVEs no BOM do Boot 4.1.1) — remover quando o Boot 4.1.2+ trouxer versões iguais ou maiores -->
+        <!-- Tomcat 11.0.24: CVE-2026-65182, CVE-2026-68525, CVE-2026-65905 (corrigidos na 11.0.25) e
+             CVE-2026-76183, CVE-2026-77791, CVE-2026-86350 (WebSocket/headers — corrigidos na 11.0.26; o Vaadin Push usa WebSocket) -->
+        <tomcat.version>11.0.26</tomcat.version>
+        <!-- jackson-databind 3.1.5 / 2.21.5: CVE-2026-91777, CVE-2026-91776, CVE-2026-68497, CVE-2026-83557, CVE-2026-19032 -->
+        <jackson-bom.version>3.1.7</jackson-bom.version>
+        <jackson-2-bom.version>2.21.7</jackson-2-bom.version>
     </properties>
 
     <dependencyManagement>
@@ -53,7 +66,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>33.6.0-jre</version>
+            <version>33.7.1-jre</version>
             <scope>compile</scope>
         </dependency>
 
@@ -94,7 +107,6 @@
         <dependency>
             <groupId>com.hazelcast</groupId>
             <artifactId>hazelcast-spring</artifactId>
-            <version>5.7.0</version>
         </dependency>
 
         <!-- Banco de dados -->
@@ -155,6 +167,8 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
             <scope>runtime</scope>
+            <!-- optional: nunca vai para o jar de produção (evita a superfície do devtools remoto) -->
+            <optional>true</optional>
         </dependency>
     </dependencies>
 
@@ -194,8 +208,11 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <!-- Mesmos argumentos JVM exigidos pelo Hazelcast, agora para os testes (@SpringBootTest sobe o cache embarcado) -->
-                    <argLine>--add-modules java.se --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED --add-opens java.management/sun.management=ALL-UNNAMED --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED --enable-final-field-mutation=ALL-UNNAMED -XX:+EnableDynamicAgentLoading</argLine>
+                    <!-- Mesmos argumentos JVM exigidos pelo Hazelcast, agora para os testes.
+                         net.bytebuddy.experimental: o Byte Buddy (usado pelo Mockito e pelo Hibernate) ainda não
+                         reconhece oficialmente o class file do Java 27 (major 71); a flag libera versões novas.
+                         Remover quando o Spring Boot trouxer um Byte Buddy com suporte oficial ao JDK 27. -->
+                    <argLine>--add-modules java.se --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED --add-opens java.management/sun.management=ALL-UNNAMED --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED --enable-final-field-mutation=ALL-UNNAMED -XX:+EnableDynamicAgentLoading -Dnet.bytebuddy.experimental=true</argLine>
                 </configuration>
             </plugin>
         </plugins>

@@ -2,18 +2,31 @@ spring:
   application:
     name: rh-system
 
+  # Sem profile explícito (rodando na IDE / mvnw) usa "dev" (application-dev.yml).
+  # A imagem Docker define SPRING_PROFILES_ACTIVE=prod: valem só os valores seguros abaixo.
+  profiles:
+    default: dev
+
+  # Virtual threads (Project Loom): requisições do Tomcat, @Async/applicationTaskExecutor
+  # e o scheduler do Spring passam a rodar em virtual threads. Desde o JDK 24 (JEP 491)
+  # blocos synchronized não "prendem" mais a carrier thread, então JPA/JDBC/SMTP
+  # bloqueantes escalam sem pool de threads gigante.
+  # Atenção: o gargalo vira o pool do Hikari (default 10 conexões) — ele é o backpressure.
+  threads:
+    virtual:
+      enabled: true
+
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:rh_system}
-    username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:postgres}
+    # Sem default de propósito: em produção, sem a variável a aplicação nem sobe (fail-fast).
+    # Os defaults de desenvolvimento (postgres/postgres) ficam no application-dev.yml.
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: validate
-    properties:
-      hibernate:
-        format_sql: true
     open-in-view: false
 
   flyway:
@@ -44,10 +57,18 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  # Atrás do nginx: respeita X-Forwarded-Proto/For (cookie Secure, redirects e HSTS corretos)
+  forward-headers-strategy: native
   servlet:
     session:
       # Sessão expira após este período sem atividade do usuário (inatividade)
-      timeout: ${SESSION_TIMEOUT_MINUTES:6}m
+      timeout: ${SESSION_TIMEOUT_MINUTES:60}m
+      cookie:
+        http-only: true
+        same-site: lax
+        # Secure por padrão (exige HTTPS). Para testar a stack Docker local em http,
+        # use SESSION_COOKIE_SECURE=false no .env — nunca em produção.
+        secure: ${SESSION_COOKIE_SECURE:true}
 
 vaadin:
   # Fecha sessões ociosas: sem esta flag, os heartbeats do Vaadin mantêm a
@@ -61,7 +82,8 @@ vaadin:
 logging:
   level:
     root: INFO
-    com.rhsystem: DEBUG
+    # DEBUG só no profile dev: em produção os logs não devem carregar dados pessoais (LGPD)
+    com.rhsystem: INFO
 
 # Configurações da aplicação
 rh-system:
@@ -69,14 +91,14 @@ rh-system:
   base-url: ${APP_BASE_URL:http://localhost:8080}
   # Remetente dos emails
   mail-from: ${MAIL_FROM:${MAIL_USERNAME:no-reply@rhsystem.com}}
-  # Validade do token de ativação em horas
-  ativacao-token-validade-horas: ${ATIVACAO_TOKEN_HORAS:24}
+  # Validade do link de redefinição de senha (minutos) — curto de propósito
+  password-reset-token-validity-minutes: ${PASSWORD_RESET_TOKEN_MINUTES:30}
   # Diretório onde os anexos dos usuários serão armazenados
   storage-dir: ${STORAGE_DIR:./storage/documentos}
   # Sessão do usuário (timer exibido no footer + aviso de expiração)
   session:
     # Tempo de vida da sessão sem atividade, em minutos
-    timeout-minutes: ${SESSION_TIMEOUT_MINUTES:6}
+    timeout-minutes: ${SESSION_TIMEOUT_MINUTES:60}
     # Antecedência (em minutos) com que o aviso de expiração é exibido
     warning-minutes: ${SESSION_WARNING_MINUTES:5}
   # Cache distribuído (Hazelcast embedded — sincronizado entre instâncias)
@@ -93,3 +115,6 @@ rh-system:
     debug-resolve-groups: ${CACHE_DEBUG_RESOLVE_GROUPS:false}
   aes:
     key: ${AES_KEY:}
+  # Só usado fora de dev/test: se o usuário seed admin.teste ainda tiver a senha padrão,
+  # ela é trocada por este valor; sem ele, o usuário é bloqueado (DefaultAdminCredentialsGuard).
+  admin-initial-password: ${ADMIN_INITIAL_PASSWORD:}

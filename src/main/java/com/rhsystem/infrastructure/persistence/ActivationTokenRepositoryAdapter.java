@@ -1,6 +1,8 @@
 package com.rhsystem.infrastructure.persistence;
 
 import com.rhsystem.domain.model.usuario.ActivationToken;
+import com.rhsystem.domain.model.usuario.TokenPurpose;
+import com.rhsystem.domain.model.usuario.User;
 import com.rhsystem.domain.repository.ActivationTokenRepository;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -20,7 +22,15 @@ public class ActivationTokenRepositoryAdapter implements ActivationTokenReposito
     }
 
     @Override
-    public Optional<ActivationToken> findByToken(String token) {
-        return jpa.findByToken(token);
+    public Optional<ActivationToken> findByToken(String rawToken) {
+        if (rawToken == null || rawToken.isBlank()) {
+            return Optional.empty();
+        }
+        return jpa.findByTokenHash(ActivationToken.hash(rawToken));
+    }
+
+    @Override
+    public int invalidateActiveTokens(User user, TokenPurpose purpose) {
+        return jpa.invalidateActive(user, purpose);
     }
 }

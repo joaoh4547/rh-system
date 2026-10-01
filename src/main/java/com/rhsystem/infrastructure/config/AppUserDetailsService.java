@@ -29,7 +29,10 @@ public class AppUserDetailsService implements UserDetailsService {
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = repository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado: " + username));
+                // Generic message, no username: never reveals whether an account exists.
+                // Spring's DaoAuthenticationProvider hides this as BadCredentialsException and
+                // runs a dummy password check, so response time does not leak it either.
+                .orElseThrow(() -> new UsernameNotFoundException("Bad credentials"));
 
         boolean active = user.getStatus() == UserStatus.ACTIVE;
         return org.springframework.security.core.userdetails.User.builder()

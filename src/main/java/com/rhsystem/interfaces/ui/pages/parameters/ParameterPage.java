@@ -1,5 +1,7 @@
 package com.rhsystem.interfaces.ui.pages.parameters;
 
+import com.rhsystem.domain.model.Functionality.Roles;
+import jakarta.annotation.security.RolesAllowed;
 import com.rhsystem.application.usecase.parameter.CountParameters;
 import com.rhsystem.application.usecase.parameter.ListParameters;
 import com.rhsystem.domain.model.Sorting;
@@ -11,22 +13,23 @@ import com.rhsystem.interfaces.ui.shared.ObjectAction;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import jakarta.annotation.security.PermitAll;
 import lombok.AllArgsConstructor;
 import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.Collection;
 import java.util.stream.Stream;
 
 @Route(value = "parameters", layout = MainLayout.class)
 @PageTitle("Parâmetros")
-@PermitAll
+@RolesAllowed(Roles.MANAGE_PARAMETERS)
 @AllArgsConstructor
 public class ParameterPage extends BasePage<Parameter> {
 
 
-    private ListParameters listParameters;
-    private CountParameters countParameters;
+    private final ListParameters listParameters;
+    private final CountParameters countParameters;
+    private final ObjectProvider<ParameterFormDialog> parameterFormDialog;
 
     @Override
     protected String pageTitle() {
@@ -50,7 +53,7 @@ public class ParameterPage extends BasePage<Parameter> {
 
     @Override
     protected Dialog buildForm(@Nullable Parameter item) {
-        return null;
+        return parameterFormDialog.getObject().edit(item, this::refresh);
     }
 
     @Override

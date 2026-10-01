@@ -3,6 +3,7 @@ package com.rhsystem.interfaces.ui.pages.usuario;
 import com.rhsystem.application.dto.usuario.AddressDTO;
 import com.rhsystem.application.dto.usuario.CreateUserCommand;
 import com.rhsystem.application.dto.usuario.UpdateUserCommand;
+import com.rhsystem.application.usecase.group.ListGroups;
 import com.rhsystem.application.usecase.usuario.CreateUser;
 import com.rhsystem.application.usecase.usuario.UpdateUser;
 import com.rhsystem.domain.model.grupo.Group;
@@ -11,39 +12,49 @@ import com.rhsystem.domain.validation.ValidationException;
 import com.rhsystem.interfaces.ui.form.FormDialog;
 import com.rhsystem.interfaces.ui.form.FormDialogAction;
 import com.rhsystem.interfaces.ui.shared.ValidationNotifier;
-import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.spring.annotation.SpringComponent;
+import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.context.annotation.Scope;
 
-import java.util.List;
 import java.util.stream.Collectors;
 
 /**
  * Create/edit User dialog, built on top of {@link FormDialog} and {@link UserForm}.
+ *
+ * <p>Prototype bean: use cases are injected by Spring; the page only supplies
+ * runtime data via {@link #edit(User, Runnable)}.
  */
+@SpringComponent
+@Scope(BeanDefinition.SCOPE_PROTOTYPE)
+@RequiredArgsConstructor
 public class UserFormDialog extends FormDialog<UserFormModel> {
 
     private final CreateUser createUser;
     private final UpdateUser updateUser;
-    private final User editing;
-    private final Runnable onSaved;
-    private final UserForm form;
+    private final ListGroups listGroups;
 
-    public UserFormDialog(CreateUser createUser, UpdateUser updateUser,
-                          User editing, List<Group> availableGroups, Runnable onSaved) {
-        super(editing == null ? "form.user.title.new" : "form.user.title.edit",
-                new UserForm(editing != null, availableGroups));
-        this.createUser = createUser;
-        this.updateUser = updateUser;
+    private User editing;
+    private Runnable onSaved;
+    private UserForm form;
+
+    /**
+     * Assembles the dialog for creating ({@code editing == null}) or editing a user.
+     */
+    public UserFormDialog edit(@Nullable User editing, Runnable onSaved) {
         this.editing = editing;
         this.onSaved = onSaved;
-        this.form = (UserForm) getForm();
+        this.form = new UserForm(editing != null, listGroups.executeActive());
 
+        init(editing == null ? "form.user.title.new" : "form.user.title.edit", form);
         width("820px");
         actions(
                 FormDialogAction.cancel(getTranslation("action.cancel")),
                 FormDialogAction.primary(getTranslation("action.save"), this::save));
 
-        getForm().setBean(editing == null ? new UserFormModel() : UserFormModel.from(editing));
+        form.setBean(editing == null ? new UserFormModel() : UserFormModel.from(editing));
+        return this;
     }
 
     private void save() {
@@ -74,6 +85,4 @@ public class UserFormDialog extends FormDialog<UserFormModel> {
             ValidationNotifier.show(this::getTranslation, ex);
         }
     }
-
-
 }

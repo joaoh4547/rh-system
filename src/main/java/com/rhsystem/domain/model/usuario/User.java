@@ -153,4 +153,9 @@ public class User implements Serializable {
         }
         return func;
     }
+
+    @Override
+    public String toString() {
+        return getFullName();
+    }
 }

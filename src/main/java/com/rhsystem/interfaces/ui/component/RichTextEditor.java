@@ -41,21 +41,18 @@ import java.util.List;
  */
 @Tag("rich-text-editor")
 @JsModule("./components/rich-text-editor.ts")
-@NpmPackage(value = "@tiptap/core",                      version = "^2.27.2")
-@NpmPackage(value = "@tiptap/starter-kit",               version = "^2.27.2")
-@NpmPackage(value = "@tiptap/extension-underline",       version = "^2.27.2")
-@NpmPackage(value = "@tiptap/extension-link",            version = "^2.27.2")
-@NpmPackage(value = "@tiptap/extension-table",           version = "^2.27.2")
-@NpmPackage(value = "@tiptap/extension-table-row",       version = "^2.27.2")
-@NpmPackage(value = "@tiptap/extension-table-cell",      version = "^2.27.2")
-@NpmPackage(value = "@tiptap/extension-table-header",    version = "^2.27.2")
-@NpmPackage(value = "@tiptap/extension-text-align",      version = "^2.27.2")
-@NpmPackage(value = "@tiptap/extension-highlight",       version = "^2.27.2")
-@NpmPackage(value = "@tiptap/extension-text-style",      version = "^2.27.2")
-@NpmPackage(value = "@tiptap/extension-color",           version = "^2.27.2")
-@NpmPackage(value = "@tiptap/extension-placeholder",     version = "^2.27.2")
-@NpmPackage(value = "@tiptap/extension-character-count",     version = "^2.27.2")
-@NpmPackage(value = "@tiptap/extension-code-block-lowlight", version = "^2.27.2")
+// Tiptap 3.31.4+ (2.x has an unpatched prototype-pollution advisory, GHSA-cp6q-959q-f8rh).
+// v3 consolidated packages: tables, text-style (+Color) and extensions (Placeholder,
+// CharacterCount); Link and Underline come inside StarterKit.
+@NpmPackage(value = "@tiptap/core",                          version = "^3.31.4")
+@NpmPackage(value = "@tiptap/pm",                            version = "^3.31.4")
+@NpmPackage(value = "@tiptap/starter-kit",                   version = "^3.31.4")
+@NpmPackage(value = "@tiptap/extension-table",               version = "^3.31.4")
+@NpmPackage(value = "@tiptap/extension-text-align",          version = "^3.31.4")
+@NpmPackage(value = "@tiptap/extension-highlight",           version = "^3.31.4")
+@NpmPackage(value = "@tiptap/extension-text-style",          version = "^3.31.4")
+@NpmPackage(value = "@tiptap/extensions",                    version = "^3.31.4")
+@NpmPackage(value = "@tiptap/extension-code-block-lowlight", version = "^3.31.4")
 @NpmPackage(value = "lowlight",                              version = "^3.0.0")
 @NpmPackage(value = "highlight.js",                          version = "^11.0.0")
 public class RichTextEditor extends AbstractSinglePropertyField<RichTextEditor, String>

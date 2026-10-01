@@ -3,14 +3,14 @@ package com.rhsystem.application.usecase.usuario;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.rhsystem.application.port.UserNotifier;
+import com.rhsystem.application.port.DomainEventPublisher;
+import com.rhsystem.domain.event.PasswordResetRequested;
 import com.rhsystem.domain.model.usuario.ActivationToken;
 import com.rhsystem.domain.model.usuario.TokenPurpose;
 import com.rhsystem.domain.model.usuario.User;
@@ -25,22 +25,22 @@ class RequestPasswordResetTest {
 
     private UserRepository userRepository;
     private ActivationTokenRepository tokenRepository;
-    private UserNotifier notifier;
+    private DomainEventPublisher events;
     private RequestPasswordReset useCase;
 
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
         tokenRepository = mock(ActivationTokenRepository.class);
-        notifier = mock(UserNotifier.class);
-        useCase = new RequestPasswordReset(userRepository, tokenRepository, notifier, 24);
+        events = mock(DomainEventPublisher.class);
+        useCase = new RequestPasswordReset(userRepository, tokenRepository, events, 30);
     }
 
     @Test
     void nullOrBlankEmailIsSilentlyIgnored() {
         useCase.execute(null);
         useCase.execute("   ");
-        verifyNoInteractions(userRepository, tokenRepository, notifier);
+        verifyNoInteractions(userRepository, tokenRepository, events);
     }
 
     @Test
@@ -50,7 +50,7 @@ class RequestPasswordResetTest {
         useCase.execute("ghost@example.com");
 
         verify(tokenRepository, never()).save(any());
-        verify(notifier, never()).sendPasswordReset(any(), anyString());
+        verify(events, never()).publish(any());
     }
 
     @Test
@@ -67,6 +67,12 @@ class RequestPasswordResetTest {
 
         assertEquals(TokenPurpose.PASSWORD_RESET, token.getPurpose());
         assertTrue(token.isValid());
-        verify(notifier).sendPasswordReset(user, token.getToken());
+        assertTrue(token.getExpiresAt().isBefore(java.time.LocalDateTime.now().plusMinutes(31)),
+                "reset links must be short-lived (30 min)");
+        verify(tokenRepository).invalidateActiveTokens(user, TokenPurpose.PASSWORD_RESET);
+        ArgumentCaptor<PasswordResetRequested> eventCaptor = ArgumentCaptor.forClass(PasswordResetRequested.class);
+        verify(events).publish(eventCaptor.capture());
+        assertEquals("joao@example.com", eventCaptor.getValue().email());
+        assertEquals(token.getRawToken(), eventCaptor.getValue().resetToken());
     }
 }

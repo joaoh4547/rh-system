@@ -1,6 +1,7 @@
 package com.rhsystem.application.usecase.usuario;
 
-import com.rhsystem.application.port.UserNotifier;
+import com.rhsystem.application.port.DomainEventPublisher;
+import com.rhsystem.domain.event.PasswordResetRequested;
 import com.rhsystem.domain.model.usuario.ActivationToken;
 import com.rhsystem.domain.model.usuario.TokenPurpose;
 import com.rhsystem.domain.repository.ActivationTokenRepository;
@@ -11,7 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Use case: requests a password reset (generates token and sends email).
+ * Use case: requests a password reset (generates token and publishes
+ * {@link PasswordResetRequested}; the email goes out after the commit).
  * Does not reveal whether the email exists, for security.
  */
 @Service
@@ -19,17 +21,17 @@ public class RequestPasswordReset {
 
     private final UserRepository userRepository;
     private final ActivationTokenRepository tokenRepository;
-    private final UserNotifier notifier;
-    private final long tokenValidityHours;
+    private final DomainEventPublisher events;
+    private final long tokenValidityMinutes;
 
     public RequestPasswordReset(UserRepository userRepository,
                                 ActivationTokenRepository tokenRepository,
-                                UserNotifier notifier,
-                                @Value("${rh-system.ativacao-token-validade-horas:24}") long tokenValidityHours) {
+                                DomainEventPublisher events,
+                                @Value("${rh-system.password-reset-token-validity-minutes:30}") long tokenValidityMinutes) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
-        this.notifier = notifier;
-        this.tokenValidityHours = tokenValidityHours;
+        this.events = events;
+        this.tokenValidityMinutes = tokenValidityMinutes;
     }
 
     @Transactional
@@ -38,10 +40,12 @@ public class RequestPasswordReset {
             return;
         }
         userRepository.findByEmail(email.trim()).ifPresent(user -> {
+            // Only the newest link works: earlier, still-valid reset tokens are burned.
+            tokenRepository.invalidateActiveTokens(user, TokenPurpose.PASSWORD_RESET);
             ActivationToken token = new ActivationToken(user,
-                    LocalDateTime.now().plusHours(tokenValidityHours), TokenPurpose.PASSWORD_RESET);
+                    LocalDateTime.now().plusMinutes(tokenValidityMinutes), TokenPurpose.PASSWORD_RESET);
             tokenRepository.save(token);
-            notifier.sendPasswordReset(user, token.getToken());
+            events.publish(PasswordResetRequested.of(user, token.getRawToken()));
         });
     }
 }

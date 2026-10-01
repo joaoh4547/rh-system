@@ -1,5 +1,7 @@
 package com.rhsystem.application.usecase.usuario;
 
+import com.rhsystem.domain.model.Functionality.Roles;
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.rhsystem.domain.model.Sorting;
 import com.rhsystem.domain.model.usuario.User;
 import com.rhsystem.domain.repository.UserRepository;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Provides both full loading ({@link #execute()}) and paginated loading
  * ({@link #execute(int, int)}) for use in server-side grids.
  */
+@PreAuthorize("hasRole('" + Roles.VIEW_USER + "')")
 @Service
 public class ListUsers {
 

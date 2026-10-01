@@ -80,7 +80,7 @@ class CommandValidatorTest {
 
     @Test
     void matchingValidPasswordPasses() {
-        ActivationCommand cmd = new ActivationCommand("token", "secret1", "secret1");
+        ActivationCommand cmd = new ActivationCommand("token", "s3cret-Pass", "s3cret-Pass");
         assertFalse(commandValidator.check(cmd).hasErrors());
     }
 

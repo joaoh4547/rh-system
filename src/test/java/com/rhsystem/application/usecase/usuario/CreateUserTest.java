@@ -14,23 +14,28 @@ import com.rhsystem.application.dto.usuario.AddressDTO;
 import com.rhsystem.application.dto.usuario.CreateUserCommand;
 import com.rhsystem.application.dto.usuario.DocumentUpload;
 import com.rhsystem.application.port.FileStorage;
-import com.rhsystem.application.port.UserNotifier;
+import com.rhsystem.application.port.DomainEventPublisher;
 import com.rhsystem.application.validation.CommandValidator;
+import com.rhsystem.domain.event.UserCreated;
 import com.rhsystem.domain.model.grupo.Group;
+import com.rhsystem.domain.model.parameters.ParameterValueConverter;
 import com.rhsystem.domain.model.usuario.ActivationToken;
 import com.rhsystem.domain.model.usuario.TokenPurpose;
 import com.rhsystem.domain.model.usuario.User;
 import com.rhsystem.domain.model.usuario.UserStatus;
 import com.rhsystem.domain.repository.ActivationTokenRepository;
 import com.rhsystem.domain.repository.GroupRepository;
+import com.rhsystem.domain.repository.ParameterRepository;
 import com.rhsystem.domain.repository.UserRepository;
 import com.rhsystem.domain.validation.ValidationException;
 import com.rhsystem.domain.validation.Violation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidatorFactory;
+
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,7 +52,9 @@ class CreateUserTest {
     private UserRepository userRepository;
     private GroupRepository groupRepository;
     private ActivationTokenRepository tokenRepository;
-    private UserNotifier notifier;
+    private ParameterValueConverter converter;
+    private ParameterRepository parameterRepository;
+    private DomainEventPublisher events;
     private FileStorage fileStorage;
     private CreateUser useCase;
 
@@ -67,10 +74,12 @@ class CreateUserTest {
         userRepository = mock(UserRepository.class);
         groupRepository = mock(GroupRepository.class);
         tokenRepository = mock(ActivationTokenRepository.class);
-        notifier = mock(UserNotifier.class);
+        parameterRepository = mock(ParameterRepository.class);
+        events = mock(DomainEventPublisher.class);
         fileStorage = mock(FileStorage.class);
+        converter = mock(ParameterValueConverter.class);
         useCase = new CreateUser(userRepository, groupRepository, tokenRepository,
-                notifier, fileStorage, commandValidator, 24);
+                events, fileStorage, commandValidator, parameterRepository, converter);
     }
 
     private static CreateUserCommand command(Set<Long> groupIds, List<DocumentUpload> documents) {
@@ -84,7 +93,7 @@ class CreateUserTest {
     void createsPendingUserWithGeneratedUsernameNormalizedDocumentsAndActivationEmail() {
         when(userRepository.existsByUsername(anyString())).thenReturn(false);
         when(groupRepository.findAllById(Set.of(5L)))
-                .thenReturn(List.of(Group.builder().id(5L).name("RH").active(true).build()));
+                .thenReturn(List.of(Group.builder().id(5L).name("RH").enable(true).build()));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         User saved = useCase.execute(command(Set.of(5L), null));
@@ -102,7 +111,13 @@ class CreateUserTest {
         assertEquals(TokenPurpose.ACTIVATION, token.getPurpose());
         assertTrue(token.isValid());
 
-        verify(notifier).sendActivation(saved, token.getToken());
+        ArgumentCaptor<UserCreated> eventCaptor = ArgumentCaptor.forClass(UserCreated.class);
+        verify(events).publish(eventCaptor.capture());
+        UserCreated event = eventCaptor.getValue();
+        assertEquals("joao.silva", event.username());
+        assertEquals("joao@example.com", event.email());
+        assertEquals("João", event.firstName());
+        assertEquals(token.getRawToken(), event.activationToken());
     }
 
     @Test
@@ -119,7 +134,7 @@ class CreateUserTest {
 
     @Test
     void storesDocumentsThroughFileStoragePort() {
-        byte[] content = "conteudo".getBytes(StandardCharsets.UTF_8);
+        byte[] content = "%PDF-1.7 conteudo".getBytes(StandardCharsets.UTF_8);
         when(fileStorage.store(content, "rg.pdf")).thenReturn("storage/rg.pdf");
         when(groupRepository.findAllById(Set.of())).thenReturn(List.of());
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -149,7 +164,7 @@ class CreateUserTest {
 
         verify(userRepository, never()).save(any());
         verify(tokenRepository, never()).save(any());
-        verify(notifier, never()).sendActivation(any(), anyString());
+        verify(events, never()).publish(any());
     }
 
     @Test
@@ -164,5 +179,31 @@ class CreateUserTest {
         assertTrue(keys.contains("error.email.invalid"));
         assertTrue(keys.contains("error.cpf.invalid"));
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsAttachmentWhoseContentIsNotAnAllowedTypeEvenIfNamedPdf() {
+        byte[] html = "<html><script>alert(1)</script></html>".getBytes(StandardCharsets.UTF_8);
+
+        ValidationException ex = assertThrows(ValidationException.class, () -> useCase.execute(command(null,
+                List.of(new DocumentUpload("RG", "rg.pdf", "application/pdf", html)))));
+
+        assertTrue(ex.getViolations().stream().map(Violation::messageKey).toList()
+                .contains("error.document.type"));
+        verify(fileStorage, never()).store(any(), any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void storedContentTypeComesFromMagicBytesNotFromTheClient() {
+        byte[] png = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n', 1, 2, 3};
+        when(fileStorage.store(png, "foto.pdf")).thenReturn("storage/foto.pdf");
+        when(groupRepository.findAllById(Set.of())).thenReturn(List.of());
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        User saved = useCase.execute(command(null,
+                List.of(new DocumentUpload("Foto", "foto.pdf", "application/pdf", png))));
+
+        assertEquals("image/png", saved.getDocuments().getFirst().getContentType());
     }
 }

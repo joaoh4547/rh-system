@@ -10,31 +10,44 @@ import com.rhsystem.interfaces.ui.component.LucideIcon;
 import com.rhsystem.interfaces.ui.form.FormDialog;
 import com.rhsystem.interfaces.ui.form.FormDialogAction;
 import com.rhsystem.interfaces.ui.shared.ValidationNotifier;
-import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.spring.annotation.SpringComponent;
+import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.context.annotation.Scope;
 
+/**
+ * Create/edit Group dialog.
+ *
+ * <p>Prototype bean: use cases are injected by Spring; the page only supplies
+ * runtime data via {@link #edit(Group, Runnable)}.
+ */
+@SpringComponent
+@Scope(BeanDefinition.SCOPE_PROTOTYPE)
+@RequiredArgsConstructor
 public class GroupFormDialog extends FormDialog<GroupFormModel> {
-
-
-    private final Runnable onSave;
 
     private final CreateGroup createGroup;
     private final UpdateGroup updateGroup;
-    private final Group editing;
 
+    private Group editing;
+    private Runnable onSaved;
 
-    public GroupFormDialog(Group editing, CreateGroup createGroup, UpdateGroup updateGroup, Runnable onSave) {
-        super(editing == null ? "form.group.title.new" : "form.group.title.edit", new GroupForm());
-        this.onSave = onSave;
-        this.createGroup = createGroup;
-        this.updateGroup = updateGroup;
+    /**
+     * Assembles the dialog for creating ({@code editing == null}) or editing a group.
+     */
+    public GroupFormDialog edit(@Nullable Group editing, Runnable onSaved) {
         this.editing = editing;
+        this.onSaved = onSaved;
+
+        init(editing == null ? "form.group.title.new" : "form.group.title.edit", new GroupForm());
         width("880px");
+        actions(
+                FormDialogAction.cancel(getTranslation("action.cancel")),
+                FormDialogAction.primary(getTranslation("action.save"), this::save).icon(LucideIcon.check()));
 
         getForm().setBean(editing == null ? new GroupFormModel() : GroupFormModel.of(editing));
-
-        actions(FormDialogAction.cancel(getTranslation("action.cancel")), FormDialogAction.primary(getTranslation("action.save"), this::save).icon(LucideIcon.check()));
-
+        return this;
     }
 
     public void save() {
@@ -69,7 +82,7 @@ public class GroupFormDialog extends FormDialog<GroupFormModel> {
             }
 
             notify("form.group.saved", true);
-            onSave.run();
+            onSaved.run();
             close();
         } catch (ValidationException ex) {
             ValidationNotifier.show(this::getTranslation, ex);

@@ -121,4 +121,8 @@ public class LucideIcon extends Component implements HasStyle, HasSize {
     public static LucideIcon restore(){
         return new LucideIcon("RotateCcw");
     }
+
+    public static LucideIcon cache(){
+        return new LucideIcon("DatabaseZap");
+    }
 }

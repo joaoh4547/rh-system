@@ -1,0 +1,22 @@
+# Profile "dev" — ativado automaticamente quando nenhum profile é informado
+# (spring.profiles.default no application.yml). Conveniências de desenvolvimento
+# que NÃO podem valer em produção.
+spring:
+  datasource:
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  servlet:
+    session:
+      cookie:
+        # localhost em http: cookie Secure não seria enviado pelo navegador
+        secure: false
+
+logging:
+  level:
+    com.rhsystem: DEBUG

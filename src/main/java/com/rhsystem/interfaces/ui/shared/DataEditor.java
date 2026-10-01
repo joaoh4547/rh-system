@@ -187,6 +187,11 @@ public abstract class DataEditor<T> extends VerticalLayout {
         return true;
     }
 
+    /** Whether the enable/disable actions are offered (e.g. permission check). */
+    protected boolean canEnableDisable(T obj) {
+        return true;
+    }
+
     private boolean isDeleted(T obj) {
         return implementsType(HasDeletion.class, obj).isDeleted();
     }
@@ -386,7 +391,7 @@ public abstract class DataEditor<T> extends VerticalLayout {
                 .label(getTranslation("action.disable"))
                 .icon(LucideIcon::lock)
                 .handler(x -> createEnable(false, x).open())
-                .visible(this::isEnable)
+                .visible(x -> canEnableDisable(x) && isEnable(x))
                 .build();
 
     }
@@ -400,7 +405,7 @@ public abstract class DataEditor<T> extends VerticalLayout {
                 .label(getTranslation("action.enable"))
                 .icon(LucideIcon::unLock)
                 .handler(x -> createEnable(true, x).open())
-                .visible(g -> !isEnable(g))
+                .visible(g -> canEnableDisable(g) && !isEnable(g))
                 .build();
     }
 

@@ -69,10 +69,10 @@ class ActivateUserTest {
     @Test
     void activatesUserEncodingPasswordAndConsumesToken() {
         ActivationToken token = token(TokenPurpose.ACTIVATION, LocalDateTime.now().plusHours(1));
-        when(tokenRepository.findByToken(token.getToken())).thenReturn(Optional.of(token));
-        when(passwordEncoder.encode("secret1")).thenReturn("HASH");
+        when(tokenRepository.findByToken(token.getRawToken())).thenReturn(Optional.of(token));
+        when(passwordEncoder.encode("s3cret-Pass")).thenReturn("HASH");
 
-        useCase.execute(new ActivationCommand(token.getToken(), "secret1", "secret1"));
+        useCase.execute(new ActivationCommand(token.getRawToken(), "s3cret-Pass", "s3cret-Pass"));
 
         User user = token.getUser();
         assertEquals(UserStatus.ACTIVE, user.getStatus());
@@ -88,17 +88,17 @@ class ActivateUserTest {
         when(tokenRepository.findByToken("nope")).thenReturn(Optional.empty());
 
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> useCase.execute(new ActivationCommand("nope", "secret1", "secret1")));
+                () -> useCase.execute(new ActivationCommand("nope", "s3cret-Pass", "s3cret-Pass")));
         assertEquals("error.token.activation.invalid", ex.getMessage());
     }
 
     @Test
     void passwordResetTokenCannotActivateAccount() {
         ActivationToken token = token(TokenPurpose.PASSWORD_RESET, LocalDateTime.now().plusHours(1));
-        when(tokenRepository.findByToken(token.getToken())).thenReturn(Optional.of(token));
+        when(tokenRepository.findByToken(token.getRawToken())).thenReturn(Optional.of(token));
 
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> useCase.execute(new ActivationCommand(token.getToken(), "secret1", "secret1")));
+                () -> useCase.execute(new ActivationCommand(token.getRawToken(), "s3cret-Pass", "s3cret-Pass")));
         assertEquals("error.token.activation.expired", ex.getMessage());
         verify(userRepository, never()).save(any());
     }
@@ -106,10 +106,10 @@ class ActivateUserTest {
     @Test
     void expiredTokenIsRejected() {
         ActivationToken token = token(TokenPurpose.ACTIVATION, LocalDateTime.now().minusMinutes(1));
-        when(tokenRepository.findByToken(token.getToken())).thenReturn(Optional.of(token));
+        when(tokenRepository.findByToken(token.getRawToken())).thenReturn(Optional.of(token));
 
         assertThrows(BusinessException.class,
-                () -> useCase.execute(new ActivationCommand(token.getToken(), "secret1", "secret1")));
+                () -> useCase.execute(new ActivationCommand(token.getRawToken(), "s3cret-Pass", "s3cret-Pass")));
         assertEquals(UserStatus.PENDING_CONFIRMATION, token.getUser().getStatus());
     }
 
@@ -117,10 +117,10 @@ class ActivateUserTest {
     void alreadyUsedTokenIsRejected() {
         ActivationToken token = token(TokenPurpose.ACTIVATION, LocalDateTime.now().plusHours(1));
         token.setUsed(true);
-        when(tokenRepository.findByToken(token.getToken())).thenReturn(Optional.of(token));
+        when(tokenRepository.findByToken(token.getRawToken())).thenReturn(Optional.of(token));
 
         assertThrows(BusinessException.class,
-                () -> useCase.execute(new ActivationCommand(token.getToken(), "secret1", "secret1")));
+                () -> useCase.execute(new ActivationCommand(token.getRawToken(), "s3cret-Pass", "s3cret-Pass")));
     }
 
     @Test

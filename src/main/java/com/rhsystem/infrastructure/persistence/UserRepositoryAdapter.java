@@ -67,7 +67,7 @@ public class UserRepositoryAdapter implements UserRepository {
 
     @Override
     @Cacheable(cacheNames = CacheConfig.USERS,
-            key = "'page:' + #offset + ':' + #limit + ':' + #sorting")
+            key = "'page:' + #offset + ':' + #limit + ':' + #sorting.toString()")
     public List<User> findPaginated(int offset, int limit, Collection<Sorting> sorting) {
         int page = limit > 0 ? offset / limit : 0;
         Sort sort = JpaSortUtil.createSort(sorting, Sort.by("firstName").ascending());

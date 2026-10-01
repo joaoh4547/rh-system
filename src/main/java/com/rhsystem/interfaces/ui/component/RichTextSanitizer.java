@@ -74,26 +74,15 @@ final class RichTextSanitizer {
      * Returns a sanitized copy of {@code html}, safe for persistence and display.
      * Returns an empty string when the input is {@code null} or blank.
      *
-     * <p><strong>Order:</strong> HTML entities are decoded <em>first</em> so the OWASP
-     * whitelist sanitizer sees the real HTML structure — {@code &lt;script&gt;} is
-     * decoded to {@code <script>} and then stripped, instead of passing through as
-     * visible text. {@code &amp;} is decoded last to prevent double-decoding sequences
-     * such as {@code &amp;lt;}.</p>
-     *
-     * <p>After sanitization, {@code &gt;} is decoded back to {@code >} — HTML5 permits
-     * literal {@code >} in text content and it is more readable in stored templates.</p>
+     * <p>The input goes <b>straight</b> to the OWASP policy, which parses entities
+     * correctly. There is deliberately no manual entity decoding before it: decoding
+     * {@code &lt;script&gt;} first would turn text the user typed literally into
+     * active markup, and a hand-written decoder never covers every encoding
+     * ({@code &#60;}, {@code &#x3C;}, ...). Escaped text stays escaped text — it is
+     * displayed, never executed.</p>
      */
     static String sanitize(String html) {
         if (html == null || html.isBlank()) return "";
-        // Decode entities before sanitizing so OWASP can see the real structure.
-        // &amp; must be decoded last to avoid double-decoding (e.g. &amp;lt; → &lt; → <).
-        String decoded = html
-                .replace("&lt;",   "<")
-                .replace("&gt;",   ">")
-                .replace("&quot;", "\"")
-                .replace("&#39;",  "'")
-                .replace("&amp;",  "&");
-        // Sanitize the decoded HTML; OWASP re-encodes > in text as &gt; — undo that.
-        return POLICY.sanitize(decoded).replace("&gt;", ">");
+        return POLICY.sanitize(html);
     }
 }
