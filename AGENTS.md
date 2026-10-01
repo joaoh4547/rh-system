@@ -8,7 +8,7 @@ Whenever a change affects anything documented here — new/renamed classes, use 
 
 ## Stack
 
-Java 26, Spring Boot 4.1.x (`spring-boot-starter-parent` 4.1.0), Vaadin 25.2.x, PostgreSQL 17, Flyway, Lombok, Hazelcast embedded (distributed cache). Tests use H2 in-memory (PostgreSQL compatibility mode) — the real database is never touched by tests. Both the Spring Boot Maven plugin and Surefire pass `--add-opens`/`--add-exports` JVM arguments required by Hazelcast — keep them when touching `pom.xml`.
+Java 27, Spring Boot 4.1.x (`spring-boot-starter-parent` 4.1.1), Vaadin 25.3.x, PostgreSQL 17, Flyway, Lombok, Hazelcast embedded (distributed cache). Tests use H2 in-memory (PostgreSQL compatibility mode) — the real database is never touched by tests. Both the Spring Boot Maven plugin and Surefire pass `--add-opens`/`--add-exports` JVM arguments required by Hazelcast — keep them when touching `pom.xml`. **Virtual threads are on** (`spring.threads.virtual.enabled: true`): Tomcat requests, `applicationTaskExecutor` and scheduling run on virtual threads. **Java 27 notes:** Spring Boot 4.1.1 officially documents Java ≤ 26 (27 is official from 4.2) — we run 27 anyway; `pom.xml` overrides `lombok.version` to 1.18.48 (first release with JDK 27 support) and `hazelcast.version` to 5.7.0 (the Boot BOM pins 5.5.0 for both `hazelcast` and `hazelcast-spring`); `-Dnet.bytebuddy.experimental=true` is set in Surefire's `argLine` (Mockito) and programmatically in `RhSystemApplication.main` (Hibernate proxies) because Byte Buddy does not officially recognize class file 71 yet — remove both once the Boot BOM ships a Byte Buddy with JDK 27 support.
 
 ## Commands
 
@@ -36,8 +36,8 @@ DDD with four layers. Dependencies flow inward: `interfaces → application → 
 
 ```
 com.rhsystem
-├── domain          # Aggregates (model/usuario, model/grupo), Functionality enum, Sorting, repository interfaces, domain services, ValidationResult
-├── application     # Use cases (one class each), DTOs/commands as records, output ports, command validation
+├── domain          # Aggregates (model/usuario, model/grupo), Functionality enum, Sorting, repository interfaces, domain services, ValidationResult, domain events (event/)
+├── application     # Use cases (one class each), DTOs/commands as records, output ports, command validation, event listeners (listener/)
 ├── infrastructure  # JPA adapters, email SMTP, file storage, Spring Security config, i18n, Hazelcast cache
 ├── interfaces      # Vaadin views and UI components
 └── utils           # Reflections (generic-type resolution used by Form/AppGrid)
@@ -81,10 +81,10 @@ Cached entities (`User`, `Group`, `Document`, `Address`) implement `Serializable
 
 | Use case | Behavior |
 |---|---|
-| `CreateUser` | Normalizes CPF (`digitsOnly`) and RG (`alphanumericOnly`), collects structural + duplicate (email/cpf/rg) violations, generates username, status `PENDING_CONFIRMATION`, stores documents via `FileStorage`, resolves `groupIds` to `Group` entities via `GroupRepository.findAllById` and sets them on the user, saves, creates `ActivationToken` (validity from `rh-system.ativacao-token-validade-horas`), sends activation email via `UserNotifier`. |
+| `CreateUser` | Normalizes CPF (`digitsOnly`) and RG (`alphanumericOnly`), collects structural + duplicate (email/cpf/rg) violations, generates username, status `PENDING_CONFIRMATION`, stores documents via `FileStorage`, resolves `groupIds` to `Group` entities via `GroupRepository.findAllById` and sets them on the user, saves, creates `ActivationToken` (validity from `rh-system.ativacao-token-validade-horas`), publishes `UserCreated` via `DomainEventPublisher` (the email is sent by `UserNotificationListener` after commit). |
 | `UpdateUser` | Loads by id, duplicate checks only when the value changed, updates fields + status + address, replaces the group membership from `groupIds` (`GroupRepository.findAllById`, empty/null clears all groups), sets `updatedAt`. Username and documents are not updated here. |
 | `ActivateUser` | Validates `ActivationCommand`, loads token, requires purpose `ACTIVATION` and `isValid()`, calls `user.activate(encodedPassword)`, marks token used. |
-| `RequestPasswordReset` | Silent no-op if email is blank or unknown (prevents user enumeration); otherwise creates `PASSWORD_RESET` token and emails the link. |
+| `RequestPasswordReset` | Silent no-op if email is blank or unknown (prevents user enumeration); otherwise creates `PASSWORD_RESET` token and publishes `PasswordResetRequested` (email sent after commit by `UserNotificationListener`). |
 | `ResetPassword` | Same shape as `ActivateUser` but purpose `PASSWORD_RESET`; calls `user.resetPassword(...)`. |
 | `ValidateLogin` | Returns `LoginResult`: `INVALID_CREDENTIALS` (unknown user, not ACTIVE, or bad password), `TERMS_PENDING` (valid but terms not accepted), `OK`. |
 | `AcceptTerms` | Sets `termsAcceptedAt` for the username. |
@@ -114,7 +114,14 @@ Groups are never deleted — they are disabled (`GroupPage.remove()` is intentio
 ### Output ports (`application/port`)
 
 - **`FileStorage.store(content, fileName)`** → implemented by `LocalFileStorage`: writes to `rh-system.storage-dir`, filename `UUID_sanitizedName`, returns the path stored in `Document.storagePath`.
-- **`UserNotifier.sendActivation/sendPasswordReset(user, token)`** → implemented by `EmailUserNotifier`: `SimpleMailMessage` in pt-BR, subject from i18n (`email.activation.subject`, `email.reset.subject`), links `${base-url}/activate/{token}` and `${base-url}/reset-password/{token}`.
+- **`DomainEventPublisher.publish(DomainEvent)`** → implemented by `SpringDomainEventPublisher` (`infrastructure/event`, delegates to Spring's `ApplicationEventPublisher`). Use cases announce facts instead of calling side effects directly.
+- **`UserNotifier.sendActivation(UserCreated)` / `sendPasswordReset(PasswordResetRequested)`** → implemented by `EmailUserNotifier`: `SimpleMailMessage` in pt-BR, subject from i18n (`email.activation.subject`, `email.reset.subject`), links `${base-url}/activate/{token}` and `${base-url}/reset-password/{token}`. Never called by use cases — only by `UserNotificationListener`.
+
+### Domain events (`domain/event`) and listeners (`application/listener`)
+
+- Events are immutable records implementing `DomainEvent` (`occurredOn()`), named in the past tense, carrying only values (never JPA entities) and built with `of(User, token)`: `UserCreated(userId, username, email, firstName, activationToken, occurredOn)`, `PasswordResetRequested(userId, username, email, firstName, resetToken, occurredOn)`. Their `toString()` deliberately omits the token.
+- `UserNotificationListener` (`@Component`): `@Async` + `@TransactionalEventListener(phase = AFTER_COMMIT, fallbackExecution = true)` handlers that call `UserNotifier`. Effects: the email goes out only if the use case's transaction commits (rollback = no email; the token is already persisted when the user clicks the link); events published outside a transaction are still handled; SMTP runs off the request thread, and a failure is logged without undoing the user creation.
+- `AsyncConfig` (`infrastructure/config`): `@EnableAsync` + `AsyncConfigurer` with a `SimpleAsyncTaskExecutor` on **virtual threads** (`async-N`, 30s graceful termination on shutdown). Declared via `AsyncConfigurer` rather than as an `Executor` bean so Boot's `applicationTaskExecutor` auto-configuration stays active. The uncaught-exception handler logs class/method only — never parameters (events carry tokens).
 - **`AccessManager.hasAccess/hasAccessAny/hasAccessAll(Functionality...)`** → implemented by `AppAccessManager` (reads the authenticated user via Vaadin `AuthenticationContext` + `UserRepository`).
 - **`CacheManagementPort`** → `HazelcastCacheManagementAdapter`: provides `getCacheStats` (entry counts), `getCacheDetails` (per-region `CacheDetail` built from Hazelcast `LocalMapStats`: owned/backup entry counts, owned/backup memory cost, hits, get operation count), `getCacheEntries(name)` (per-entry `CacheEntry` — key, value type, value preview, per-entry memory cost and hits, read from the `IMap` key set via `getEntryView`) and `clearCache`/`clearAllCaches` (Hazelcast `IMap.clear`). Only the *evict* action is exposed to the user (put/remove operation counts were dropped since the caching pattern uses `@CacheEvict(allEntries=true)` = `IMap.clear`, so per-key put/remove metrics are meaningless). `CachePage` shows summary `StatCard`s (active caches, total entries, memory, hits) plus a grid of caches; expanding a row (`setItemDetailsRenderer`, click to toggle) reveals the aggregate metric cards and a nested grid listing every stored entry of that cache.
 
@@ -228,7 +235,7 @@ Hazelcast **embedded** (`CacheConfig` in `infrastructure/config`) via Spring Cac
 
 ## Configuration
 
-`RhSystemProperties` (`@ConfigurationProperties(prefix = "rh-system")`): `baseUrl`, `mailFrom`, `activationTokenValidityHours`, `storageDir`, nested `cache` (clusterName, members, port, ttlSeconds, maxSize). `application.yml` also sets: `open-in-view: false`, SMTP with STARTTLS required, logging `com.rhsystem: DEBUG`.
+`RhSystemProperties` (`@ConfigurationProperties(prefix = "rh-system")`): `baseUrl`, `mailFrom`, `activationTokenValidityHours`, `storageDir`, nested `cache` (clusterName, members, port, ttlSeconds, maxSize), nested `mail` (`async`). `application.yml` also sets: `spring.threads.virtual.enabled: true`, `open-in-view: false`, SMTP with STARTTLS required, logging `com.rhsystem: DEBUG`.
 
 ### Environment variables
 
@@ -249,7 +256,7 @@ Hazelcast **embedded** (`CacheConfig` in `infrastructure/config`) via Spring Cac
 
 ## Docker Deployment
 
-`Dockerfile` is multi-stage (JDK 26 Maven build with `-Pproduction`, then JRE runtime). `docker-compose.yml` runs the full stack: `postgres`, `app1` + `app2` (defined via the `x-app-common` YAML anchor — Hazelcast TCP-IP discovery through `HZ_MEMBERS: app1:5701,app2:5701`, shared `app_storage` volume for document uploads), and `lb` (nginx on port 8080, config in `nginx.conf`). The nginx upstream uses `ip_hash` for sticky sessions and forwards WebSocket upgrade headers for Vaadin Push. Note: with `ip_hash`, requests from one client IP always land on the same instance — to see both instances locally, test from different IPs or temporarily switch the upstream to `least_conn` (breaks session affinity).
+`Dockerfile` is multi-stage (JDK 27 Maven build with `-Pproduction`, then JRE 27 runtime; `JAVA_TOOL_OPTIONS` carries the Hazelcast `--add-opens` flags plus `--enable-final-field-mutation=ALL-UNNAMED`). `docker-compose.yml` runs the full stack: `postgres`, `app1` + `app2` (defined via the `x-app-common` YAML anchor — Hazelcast TCP-IP discovery through `HZ_MEMBERS: app1:5701,app2:5701`, shared `app_storage` volume for document uploads), and `lb` (nginx on port 8080, config in `nginx.conf`). The nginx upstream uses `ip_hash` for sticky sessions and forwards WebSocket upgrade headers for Vaadin Push. Note: with `ip_hash`, requests from one client IP always land on the same instance — to see both instances locally, test from different IPs or temporarily switch the upstream to `least_conn` (breaks session affinity).
 
 ## Testing
 
@@ -257,7 +264,8 @@ All tests run against **in-memory H2** (PostgreSQL compatibility mode), never th
 
 - **Domain** (plain JUnit, no Spring): `UserTest` (permissions, activation, terms), `GroupTest` (id-based equality), `ActivationTokenTest`, `FunctionalityTest`, `CpfValidatorTest`, `UsernameGeneratorTest`.
 - **Validation** (plain JUnit): `CommandValidatorTest`, `ValidationResultTest`.
-- **Use cases** (Mockito + real `CommandValidator`, no database): one test class per write use case (`CreateUserTest`, `UpdateUserTest`, `ActivateUserTest`, `ResetPasswordTest`, `RequestPasswordResetTest`, `ValidateLoginTest`), grouped classes for queries (`UserQueryUseCasesTest`, `GroupCommandUseCasesTest`, `GroupQueryUseCasesTest`), plus `UserSupportTest`.
+- **Use cases** (Mockito + real `CommandValidator`, no database): one test class per write use case (`CreateUserTest`, `UpdateUserTest`, `ActivateUserTest`, `ResetPasswordTest`, `RequestPasswordResetTest`, `ValidateLoginTest`), grouped classes for queries (`UserQueryUseCasesTest`, `GroupCommandUseCasesTest`, `GroupQueryUseCasesTest`), plus `UserSupportTest`. Use-case tests mock `DomainEventPublisher` and capture the published event.
+- **Event flow** (`UserNotificationListenerTest`, minimal `@SpringJUnitConfig` context — `AsyncConfig`, the listener, `SpringDomainEventPublisher`, a `DataSourceTransactionManager` over an empty embedded H2, mocked `UserNotifier`): email only after commit and on a virtual thread, none on rollback, fallback without a transaction, notifier failures not propagated.
 - **Persistence** (`@DataJpaTest` + `@ActiveProfiles("test")` + `@AutoConfigureTestDatabase(replace = NONE)`, importing the `*Adapter` beans): `UserPersistenceTest`, `GroupPersistenceTest`, `ActivationTokenPersistenceTest` — round trips, `@EntityGraph` fetches, pagination/sorting, uniqueness checks, Flyway seed verification. Cache annotations are inert in the slice (no CacheManager), so Hazelcast does not start.
 - **Infrastructure/UI utilities**: `JpaSortUtilTest`, `LocalFileStorageTest` (`@TempDir`), `RichTextSanitizerTest` (XSS whitelist).
 - `RhSystemApplicationTests` — full-context smoke test on H2 (`@ActiveProfiles("test")`). The test profile sets `rh-system.cache.enabled: false`: `CacheConfig` is `@ConditionalOnBooleanProperty` on that flag (default `true`), so no Hazelcast node starts and, without `@EnableCaching`, the caching annotations are no-ops. This prevents the test node from trying to join a dev instance running on port 5701. Surefire still carries the Hazelcast `--add-opens` args in its `argLine`.

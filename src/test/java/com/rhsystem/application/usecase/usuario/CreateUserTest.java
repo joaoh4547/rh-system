@@ -14,8 +14,9 @@ import com.rhsystem.application.dto.usuario.AddressDTO;
 import com.rhsystem.application.dto.usuario.CreateUserCommand;
 import com.rhsystem.application.dto.usuario.DocumentUpload;
 import com.rhsystem.application.port.FileStorage;
-import com.rhsystem.application.port.UserNotifier;
+import com.rhsystem.application.port.DomainEventPublisher;
 import com.rhsystem.application.validation.CommandValidator;
+import com.rhsystem.domain.event.UserCreated;
 import com.rhsystem.domain.model.grupo.Group;
 import com.rhsystem.domain.model.parameters.ParameterValueConverter;
 import com.rhsystem.domain.model.usuario.ActivationToken;
@@ -53,7 +54,7 @@ class CreateUserTest {
     private ActivationTokenRepository tokenRepository;
     private ParameterValueConverter converter;
     private ParameterRepository parameterRepository;
-    private UserNotifier notifier;
+    private DomainEventPublisher events;
     private FileStorage fileStorage;
     private CreateUser useCase;
 
@@ -74,11 +75,11 @@ class CreateUserTest {
         groupRepository = mock(GroupRepository.class);
         tokenRepository = mock(ActivationTokenRepository.class);
         parameterRepository = mock(ParameterRepository.class);
-        notifier = mock(UserNotifier.class);
+        events = mock(DomainEventPublisher.class);
         fileStorage = mock(FileStorage.class);
         converter = mock(ParameterValueConverter.class);
         useCase = new CreateUser(userRepository, groupRepository, tokenRepository,
-                notifier, fileStorage, commandValidator, parameterRepository, converter);
+                events, fileStorage, commandValidator, parameterRepository, converter);
     }
 
     private static CreateUserCommand command(Set<Long> groupIds, List<DocumentUpload> documents) {
@@ -110,7 +111,13 @@ class CreateUserTest {
         assertEquals(TokenPurpose.ACTIVATION, token.getPurpose());
         assertTrue(token.isValid());
 
-        verify(notifier).sendActivation(saved, token.getToken());
+        ArgumentCaptor<UserCreated> eventCaptor = ArgumentCaptor.forClass(UserCreated.class);
+        verify(events).publish(eventCaptor.capture());
+        UserCreated event = eventCaptor.getValue();
+        assertEquals("joao.silva", event.username());
+        assertEquals("joao@example.com", event.email());
+        assertEquals("João", event.firstName());
+        assertEquals(token.getToken(), event.activationToken());
     }
 
     @Test
@@ -157,7 +164,7 @@ class CreateUserTest {
 
         verify(userRepository, never()).save(any());
         verify(tokenRepository, never()).save(any());
-        verify(notifier, never()).sendActivation(any(), anyString());
+        verify(events, never()).publish(any());
     }
 
     @Test

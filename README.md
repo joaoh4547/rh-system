@@ -1,6 +1,6 @@
 # RH System
 
-Sistema de gestão de RH construído com **Java 26 + Spring Boot 4 + Vaadin 25**, seguindo **DDD** e **SOLID**. Funcionalidades atuais: **CRUD de Usuários** com ativação de conta por email, redefinição de senha, aceite de termos de uso, **Grupos com permissões (funcionalidades)**, cache distribuído com **Hazelcast** e deploy clusterizado com **nginx** como load balancer.
+Sistema de gestão de RH construído com **Java 27 + Spring Boot 4 + Vaadin 25** (virtual threads ligadas), seguindo **DDD** e **SOLID**. Funcionalidades atuais: **CRUD de Usuários** com ativação de conta por email, redefinição de senha, aceite de termos de uso, **Grupos com permissões (funcionalidades)**, cache distribuído com **Hazelcast** e deploy clusterizado com **nginx** como load balancer.
 
 ## Sumário
 
@@ -25,14 +25,14 @@ Sistema de gestão de RH construído com **Java 26 + Spring Boot 4 + Vaadin 25**
 
 | Tecnologia | Versão | Uso |
 |---|---|---|
-| Java | 26 | Linguagem |
-| Spring Boot | 4.1.x | Framework base (`spring-boot-starter-parent` 4.1.0) |
-| Vaadin | 25.2.x | UI web server-side (versão exigida pelo Spring Boot 4) |
+| Java | 27 | Linguagem (virtual threads habilitadas) |
+| Spring Boot | 4.1.x | Framework base (`spring-boot-starter-parent` 4.1.1) |
+| Vaadin | 25.3.x | UI web server-side (versão exigida pelo Spring Boot 4) |
 | Spring Security | (gerenciado) | Autenticação, autorização, BCrypt |
 | PostgreSQL | 17 | Banco de dados |
 | Flyway | (gerenciado) | Migrations — única forma de evoluir o schema |
 | Hazelcast | embedded | Cache distribuído entre instâncias |
-| Lombok | — | Redução de boilerplate |
+| Lombok | 1.18.48 | Redução de boilerplate (primeira versão com suporte ao JDK 27) |
 | Maven | wrapper incluído | Build (`mvnw` / `mvnw.cmd`) |
 | nginx | 1.27 | Load balancer (deploy Docker) |
 
@@ -46,10 +46,12 @@ Quatro camadas com dependências apontando para o domínio: `interfaces → appl
 com.rhsystem
 ├── domain          # Núcleo de negócio: agregados (User, Group), VOs (Address), enums
 │                   #   (UserStatus, Functionality, TokenPurpose), Sorting, portas de
-│                   #   repositório e serviços de domínio (CpfValidator, UsernameGenerator)
+│                   #   repositório, serviços de domínio (CpfValidator, UsernameGenerator)
+│                   #   e eventos de domínio (UserCreated, PasswordResetRequested)
 ├── application     # Casos de uso (1 classe = 1 operação, método único execute),
 │                   #   DTOs/commands como records, portas de saída (FileStorage,
-│                   #   UserNotifier, AccessManager) e validação de commands
+│                   #   UserNotifier, DomainEventPublisher, AccessManager), validação de
+│                   #   commands e listeners de eventos (UserNotificationListener)
 ├── infrastructure  # Adapters: persistência JPA (+cache), email SMTP, storage em disco,
 │                   #   Spring Security, i18n, Hazelcast
 ├── interfaces      # Apresentação: views Vaadin, componentes e infraestrutura de forms
@@ -68,7 +70,18 @@ Cada operação é uma classe `@Service` com um único método `execute(...)`:
 ### Portas de saída
 
 - `FileStorage` → `LocalFileStorage`: grava anexos em `STORAGE_DIR` com nome `UUID_nomeSanitizado`.
-- `UserNotifier` → `EmailUserNotifier`: envia emails de ativação e redefinição de senha (pt-BR) com links montados a partir de `APP_BASE_URL`.
+- `DomainEventPublisher` → `SpringDomainEventPublisher`: os casos de uso **anunciam fatos** (eventos de domínio) em vez de chamar efeitos colaterais direto.
+- `UserNotifier` → `EmailUserNotifier`: envia emails de ativação e redefinição de senha (pt-BR) com links montados a partir de `APP_BASE_URL`. Quem chama é o `UserNotificationListener`, nunca o caso de uso.
+
+### Eventos de domínio
+
+`CreateUser` publica `UserCreated` e `RequestPasswordReset` publica `PasswordResetRequested` (records imutáveis em `domain/event`, só com valores — o `toString()` esconde o token). O `UserNotificationListener` escuta com `@Async` + `@TransactionalEventListener(AFTER_COMMIT, fallbackExecution = true)`:
+
+- o email só sai **depois do commit** (rollback = nenhum email; o token já está no banco quando o usuário clica no link);
+- roda em **virtual thread** (`AsyncConfig`, threads `async-N`), sem travar a tela esperando o Gmail;
+- falha de SMTP é logada (sem os parâmetros, para não vazar token) e **não desfaz o cadastro**.
+
+Para reagir a um novo fato (auditoria, log, etc.), basta criar outro listener — o caso de uso não muda.
 - `AccessManager` → `AppAccessManager`: consulta de permissões do usuário autenticado.
 
 ## Funcionalidades
@@ -133,7 +146,7 @@ Campos: nome, sobrenome, username, email, senha, status, CPF, RG, endereço (log
 
 ### Pré-requisitos
 
-- JDK 26
+- JDK 27 (o Spring Boot 4.1.1 documenta oficialmente até o 26 — o 27 só vira oficial no 4.2; ver notas no `pom.xml`)
 - Node.js 24+ (Vaadin usa no build de frontend; em dev é baixado automaticamente)
 - Docker (para o PostgreSQL e/ou stack completa)
 
@@ -193,7 +206,7 @@ Hazelcast **embedded** via Spring Cache — cada instância da aplicação embut
 
 ## Deploy com Docker (cluster + load balancer)
 
-O `Dockerfile` é multi-stage (build Maven com JDK 26 e `-Pproduction`, runtime só com JRE). O `docker-compose.yml` sobe a stack completa:
+O `Dockerfile` é multi-stage (build Maven com JDK 27 e `-Pproduction`, runtime só com JRE 27). O `docker-compose.yml` sobe a stack completa:
 
 ```bash
 docker compose up -d --build    # postgres + app1 + app2 + nginx em http://localhost:8080
@@ -220,6 +233,7 @@ docker compose up -d --build    # postgres + app1 + app2 + nginx em http://local
 | `rh-system.cache.cluster-name` | `HZ_CLUSTER_NAME` | `rh-system` |
 | `rh-system.cache.members` | `HZ_MEMBERS` | (vazio = multicast) |
 | `rh-system.cache.port` | `HZ_PORT` | `5701` |
+| `spring.threads.virtual.enabled` | — | `true` (Tomcat, `@Async` e scheduler em virtual threads) |
 | `rh-system.cache.ttl-seconds` | `CACHE_TTL_SECONDS` | `600` |
 
 ## Validação
@@ -267,6 +281,7 @@ Camadas cobertas:
 - **Domínio** (sem Spring): entidades (`UserTest`, `GroupTest`, `ActivationTokenTest`, `FunctionalityTest`) e serviços (`CpfValidatorTest`, `UsernameGeneratorTest`).
 - **Validação** (sem Spring): `CommandValidatorTest`, `ValidationResultTest`.
 - **Casos de uso** (Mockito, sem banco): criação/atualização/ativação de usuário, reset de senha, login, aceite de termos, consultas e todos os casos de uso de grupo (`application/usecase/**`).
+- **Fluxo de eventos** (`UserNotificationListenerTest`, contexto Spring mínimo + transação real em H2 vazio): email só depois do commit e em virtual thread, nada em rollback, execução mesmo sem transação, falha do SMTP não propaga.
 - **Persistência** (`@DataJpaTest` + H2 + Flyway): adapters `UserRepositoryAdapter`, `GroupRepositoryAdapter`, `ActivationTokenRepositoryAdapter`, paginação/ordenação (`JpaSortUtilTest`) e verificação do usuário seed.
 - **Infraestrutura/UI utilitários**: `LocalFileStorageTest` (diretório temporário), `RichTextSanitizerTest` (XSS).
 - **Smoke test**: `RhSystemApplicationTests` sobe o contexto completo (Vaadin, Security) sobre o H2. O Hazelcast fica **desligado** nos testes (`rh-system.cache.enabled: false` no profile `test`) — nenhum nó/cluster é criado e as anotações de cache viram no-ops.

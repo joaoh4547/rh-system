@@ -19,6 +19,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class RhSystemApplication implements AppShellConfigurator {
 
     public static void main(String[] args) {
+        // Java 27: o Byte Buddy (proxies do Hibernate) ainda não declara suporte oficial ao
+        // class file 71. A flag libera versões "futuras" — vale para IDE, jar e Docker sem
+        // precisar mexer em VM options. Remover quando o BOM do Spring Boot trouxer um
+        // Byte Buddy com suporte ao JDK 27. (Nos testes a flag vem do argLine do Surefire.)
+        if (System.getProperty("net.bytebuddy.experimental") == null) {
+            System.setProperty("net.bytebuddy.experimental", "true");
+        }
         SpringApplication.run(RhSystemApplication.class, args);
     }
 }

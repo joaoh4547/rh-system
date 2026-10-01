@@ -3,8 +3,9 @@ package com.rhsystem.application.usecase.usuario;
 import com.rhsystem.application.dto.usuario.CreateUserCommand;
 import com.rhsystem.application.dto.usuario.DocumentUpload;
 import com.rhsystem.application.port.FileStorage;
-import com.rhsystem.application.port.UserNotifier;
+import com.rhsystem.application.port.DomainEventPublisher;
 import com.rhsystem.application.validation.CommandValidator;
+import com.rhsystem.domain.event.UserCreated;
 import com.rhsystem.domain.model.parameters.AppParameter;
 import com.rhsystem.domain.model.parameters.Parameter;
 import com.rhsystem.domain.model.parameters.ParameterValueConverter;
@@ -33,7 +34,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Use case: creates a user (status PENDING), generates username, persists attachments,
- * creates the activation token and sends the email.
+ * creates the activation token and publishes {@link UserCreated} (the activation email
+ * is sent by a listener, only after this transaction commits).
  */
 @Service
 @AllArgsConstructor
@@ -42,7 +44,7 @@ public class CreateUser {
     private final UserRepository userRepository;
     private final GroupRepository groupRepository;
     private final ActivationTokenRepository tokenRepository;
-    private final UserNotifier notifier;
+    private final DomainEventPublisher events;
     private final FileStorage fileStorage;
     private final CommandValidator commandValidator;
     private final ParameterRepository parameterRepository;
@@ -91,7 +93,7 @@ public class CreateUser {
                 LocalDateTime.now().plusHours(getTokenValidityHours()), TokenPurpose.ACTIVATION);
         tokenRepository.save(token);
 
-        notifier.sendActivation(saved, token.getToken());
+        events.publish(UserCreated.of(saved, token.getToken()));
         return saved;
     }
 
